@@ -8,6 +8,7 @@ import {
   LOGO_PLACEMENTS,
   LOGO_PRESETS,
   formatINR,
+  getModelSlugForProduct,
 } from "@/lib/products";
 import { useCart } from "@/store/cart";
 import {
@@ -153,6 +154,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
         ) : (
           <div className="overflow-hidden rounded-2xl border border-line bg-surface">
             <Tee3DViewer
+              modelSlug={product.modelSlug || getModelSlugForProduct(product)}
               color={color.hex}
               logoLabel={logoLabel ?? "brand"}
               logoDataUrl={customLogo}

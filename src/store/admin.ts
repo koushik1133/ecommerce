@@ -44,7 +44,7 @@ export const useAdminProducts = create<ProductsState>()(
         }));
       },
     }),
-    { name: "admin-products-v2" }
+    { name: "admin-products-v3" }
   )
 );
 
