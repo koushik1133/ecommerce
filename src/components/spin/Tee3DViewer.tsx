@@ -27,16 +27,16 @@ function getPlacementCode(placement: string): number {
 }
 
 const MODEL_TEXTURE_MAPS: Record<string, { ao: string; normal: string }> = {
-  "oversized-tshirt": { ao: "/model/oversized-tshirt/ao_tshirt_outside.jpg", normal: "/textures/normaldetailsv2.jpg" },
-  "regular-tshirt": { ao: "/textures/outsideao.jpg", normal: "/textures/NormalFabric.png" },
+  "oversized-tshirt": { ao: "/model/oversized-tshirt/ao_tshirt_outside.jpg", normal: "/model/oversized-tshirt/normaldetailsv2.jpg" },
+  "regular-tshirt": { ao: "/model/oversized-tshirt/ao_tshirt_outside.jpg", normal: "/model/oversized-tshirt/NormalFabric.png" },
   "boxy-tshirt": { ao: "/model/boxy-tshirt/outsideaocropped.jpg", normal: "/model/boxy-tshirt/Normaldetailsv2_boxyt-shirt.png" },
-  "hanging-tshirt": { ao: "/model/hanging-tshirt/ao_outside.jpg", normal: "/textures/NormalFabric.png" },
-  "sweatshirt": { ao: "/textures/ao_outside.jpg", normal: "/textures/sweatshirtnormal.jpg" },
-  "hoodie": { ao: "/model/hoodie/outsideaohoodie.jpg", normal: "/textures/NormalFabric.png" },
-  "hanging-hoodie": { ao: "/model/hanging-hoodie/ambientoutside.jpg", normal: "/textures/NormalFabric.png" },
-  "polo-shirt": { ao: "/textures/poloshirt_Bake1_CyclesBake_AO.jpg", normal: "/textures/NormalFabric.png" },
-  "zip-hoodie": { ao: "/textures/outsidenewuv.jpg", normal: "/textures/normaldetails.jpg" },
-  "sweatpants": { ao: "/textures/eggjog.jpg", normal: "/textures/NormalDetails.jpg" },
+  "hanging-tshirt": { ao: "/model/hanging-tshirt/ao_outside.jpg", normal: "/model/hanging-tshirt/NormalFabric.png" },
+  "sweatshirt": { ao: "/model/hanging-tshirt/ao_outside.jpg", normal: "/model/hanging-tshirt/NormalFabric.png" },
+  "hoodie": { ao: "/model/hoodie/outsideaohoodie.jpg", normal: "/model/hoodie/NormalFabric.png" },
+  "hanging-hoodie": { ao: "/model/hanging-hoodie/ambientoutside.jpg", normal: "/model/hanging-hoodie/NormalFabric.png" },
+  "polo-shirt": { ao: "/model/oversized-tshirt/ao_tshirt_outside.jpg", normal: "/model/oversized-tshirt/NormalFabric.png" },
+  "zip-hoodie": { ao: "/model/hoodie/outsideaohoodie.jpg", normal: "/model/hoodie/NormalFabric.png" },
+  "sweatpants": { ao: "/model/oversized-tshirt/ao_tshirt_outside.jpg", normal: "/model/oversized-tshirt/NormalFabric.png" },
   "cap": { ao: "/model/cap/Cap_Bake1_CyclesBake_AO.png", normal: "/model/cap/normalmapv3.jpg" },
 };
 
