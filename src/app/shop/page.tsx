@@ -39,10 +39,10 @@ function ShopContent() {
           Coming soon · Early access
         </p>
         <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight">
-          Shop Apparel
+          Shop Collection
         </h1>
         <p className="mt-3 text-muted leading-relaxed">
-          Explore our complete 3D apparel collection — T-shirts, Hoodies, Sweatshirts, Sweatpants, and Caps. Every piece features an interactive 360° view and custom logo placement.
+          Explore our full line of 3D apparel — T-shirts, Hoodies, Sweatshirts, Sweatpants, and Caps. Every piece includes interactive 360° preview and custom logo placement.
         </p>
       </div>
 

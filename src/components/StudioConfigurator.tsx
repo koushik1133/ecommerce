@@ -113,6 +113,11 @@ export function StudioConfigurator({
   const [decorType, setDecorType] = useState<"print" | "stitch">("print");
   const [interactMode, setInteractMode] = useState<"orbit" | "drag-logo">("orbit");
 
+  // Motion & Animation States
+  const [motion, setMotion] = useState<"static" | "walk" | "waves" | "knit">("static");
+  const [motionSpeed, setMotionSpeed] = useState(0.5);
+  const [cameraAnim, setCameraAnim] = useState<"none" | "rotate" | "orbit-zoom">("rotate");
+
   // Output settings
   const [renderQuality, setRenderQuality] = useState<"fast" | "high">("fast");
 
@@ -701,13 +706,16 @@ export function StudioConfigurator({
           placement={placement}
           background={currentBgColor}
           customBackgroundUrl={undefined}
-          autoRotate={false}
-          rotateSpeed={0.0}
+          autoRotate={cameraAnim !== "none"}
+          rotateSpeed={0.9}
           acidWash={acidWash}
           puffPrint={puffPrint}
           designScale={designScale}
           designX={designX}
           designY={designY}
+          motion={motion}
+          motionSpeed={motionSpeed}
+          cameraAnim={cameraAnim}
           logoColor={logoColor}
           dyeLogo={dyeLogo}
           interactMode={interactMode}

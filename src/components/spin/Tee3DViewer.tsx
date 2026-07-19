@@ -26,6 +26,20 @@ function getPlacementCode(placement: string): number {
   return 1; // chest-center
 }
 
+const MODEL_TEXTURE_MAPS: Record<string, { ao: string; normal: string }> = {
+  "oversized-tshirt": { ao: "/model/oversized-tshirt/ao_tshirt_outside.jpg", normal: "/textures/normaldetailsv2.jpg" },
+  "regular-tshirt": { ao: "/textures/outsideao.jpg", normal: "/textures/NormalFabric.png" },
+  "boxy-tshirt": { ao: "/model/boxy-tshirt/outsideaocropped.jpg", normal: "/model/boxy-tshirt/Normaldetailsv2_boxyt-shirt.png" },
+  "hanging-tshirt": { ao: "/model/hanging-tshirt/ao_outside.jpg", normal: "/textures/NormalFabric.png" },
+  "sweatshirt": { ao: "/textures/ao_outside.jpg", normal: "/textures/sweatshirtnormal.jpg" },
+  "hoodie": { ao: "/model/hoodie/outsideaohoodie.jpg", normal: "/textures/NormalFabric.png" },
+  "hanging-hoodie": { ao: "/model/hanging-hoodie/ambientoutside.jpg", normal: "/textures/NormalFabric.png" },
+  "polo-shirt": { ao: "/textures/poloshirt_Bake1_CyclesBake_AO.jpg", normal: "/textures/NormalFabric.png" },
+  "zip-hoodie": { ao: "/textures/outsidenewuv.jpg", normal: "/textures/normaldetails.jpg" },
+  "sweatpants": { ao: "/textures/eggjog.jpg", normal: "/textures/NormalDetails.jpg" },
+  "cap": { ao: "/model/cap/Cap_Bake1_CyclesBake_AO.png", normal: "/model/cap/normalmapv3.jpg" },
+};
+
 type Tee3DViewerProps = {
   modelSlug?: string;
   color: string;
@@ -290,7 +304,28 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         mixerRef.current = null;
       }
 
-      // 2. Load the new GLTF model
+      // 2. Load model-specific AO texture if available
+      const texInfo = MODEL_TEXTURE_MAPS[modelSlug] || MODEL_TEXTURE_MAPS["oversized-tshirt"];
+      const textureLoader = new THREE.TextureLoader();
+      let modelAoTexture: THREE.Texture | null = null;
+      let modelNormalTexture: THREE.Texture | null = null;
+
+      if (texInfo) {
+        modelAoTexture = textureLoader.load(texInfo.ao);
+        modelNormalTexture = textureLoader.load(texInfo.normal);
+        [modelAoTexture, modelNormalTexture].forEach((t) => {
+          if (t) {
+            t.wrapS = THREE.RepeatWrapping;
+            t.wrapT = THREE.RepeatWrapping;
+            t.flipY = false;
+          }
+        });
+        if (modelNormalTexture) {
+          modelNormalTexture.repeat.set(30, 30);
+        }
+      }
+
+      // 3. Load the GLTF model
       const gltfLoader = new GLTFLoader();
       gltfLoader.load(
         `/model/${modelSlug}/tshirt-sizingtest.gltf`,
@@ -302,8 +337,15 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           tshirtGroup.traverse((child) => {
             if (child.name.toLowerCase().includes("pivot")) {
               child.scale.set(1, 1, 1);
+              child.matrixAutoUpdate = true;
+              child.updateMatrix();
             }
           });
+
+          const hiddenPatterns = [
+            "env_sphere", "cameradefault", "camrotate", "tshirt_walking", "tshirt_waves",
+            "3dmodelexport", "v3d_proxy", "snaplock", "rope", "plane", "hanger", "stand", "metal01"
+          ];
 
           // Compute size and center
           const box = new THREE.Box3();
@@ -311,14 +353,10 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           tshirtGroup.traverse((child) => {
             if (child instanceof THREE.Mesh) {
               const name = child.name.toLowerCase();
-              if (
-                name.includes("env") ||
-                name.includes("bg") ||
-                name.includes("camera") ||
-                name.includes("sphere")
-              ) {
-                child.visible = false;
-              } else {
+              const isDuplicateVariant = (name.includes("tshirt_static") || name.includes("3dmodelexport")) && /\d{3,}$/.test(name);
+              const shouldHide = hiddenPatterns.some((p) => name.includes(p)) || isDuplicateVariant;
+              child.visible = !shouldHide;
+              if (!shouldHide) {
                 box.expandByObject(child);
                 hasMesh = true;
               }
@@ -342,6 +380,9 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           } else if (modelSlug === "sweatpants") {
             scaleVal = 1.8;
             yOffset = 0.1;
+          } else if (["hanging-tshirt", "hanging-hoodie"].includes(modelSlug)) {
+            scaleVal = 1.6;
+            yOffset = 0.1;
           }
 
           const finalScale = scaleVal / (maxDim > 0 ? maxDim : 1);
@@ -358,18 +399,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
 
           // Configure meshes and materials
           tshirtGroup.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              const name = child.name.toLowerCase();
-              if (
-                name.includes("env") ||
-                name.includes("bg") ||
-                name.includes("camera") ||
-                name.includes("sphere")
-              ) {
-                child.visible = false;
-                return;
-              }
-
+            if (child instanceof THREE.Mesh && child.visible) {
               if (child.geometry && child.geometry.attributes.uv && !child.geometry.attributes.uv2) {
                 child.geometry.setAttribute("uv2", child.geometry.attributes.uv);
               }
@@ -378,7 +408,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
               child.receiveShadow = true;
               tshirtMeshesRef.current.push(child);
 
-              setupMeshMaterial(child);
+              setupMeshMaterial(child, modelAoTexture, modelNormalTexture);
             }
           });
 
@@ -397,9 +427,11 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           updateUniform("uDyeLogo", stateRef.current.dyeLogo);
           updateUniform("uPlacement", getPlacementCode(stateRef.current.placement));
 
+          const isTop = !["sweatpants", "cap"].includes(modelSlug);
+          updateUniform("uDesignEnabled", isTop && Boolean(activeDesignTextureRef.current));
+
           if (activeDesignTextureRef.current) {
             updateUniform("uDesignTex", activeDesignTextureRef.current);
-            updateUniform("uDesignEnabled", true);
           }
         },
         undefined,
@@ -635,15 +667,48 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         if (tshirtGroupRef.current) {
           const group = tshirtGroupRef.current;
           const meshes = tshirtMeshesRef.current;
-          
-          group.position.copy(loadedPositionRef.current);
-          group.rotation.set(0, Math.PI, 0);
-          meshes.forEach((m) => {
-            m.position.set(0, 0, 0);
-          });
+          const currentMotion = stateRef.current.motion;
+          const currentSpeed = stateRef.current.motionSpeed;
+          const yo = loadedPositionRef.current.y;
+
+          if (currentMotion === "walk") {
+            const swaySpeed = currentSpeed * 4.0;
+            group.position.y = yo + Math.sin(time * swaySpeed) * 0.05;
+            group.rotation.y = Math.PI + Math.sin(time * (swaySpeed * 0.5)) * 0.08;
+            group.rotation.z = Math.cos(time * (swaySpeed * 0.5)) * 0.03;
+            meshes.forEach((m) => m.position.set(0, 0, 0));
+          } else if (currentMotion === "waves") {
+            const waveSpeed = time * currentSpeed * 8.0;
+            meshes.forEach((mesh, idx) => {
+              mesh.rotation.set(0, 0, 0);
+              mesh.position.z = Math.sin(waveSpeed + idx) * 0.02;
+              mesh.position.y = Math.cos(waveSpeed * 0.7 + idx) * 0.01;
+            });
+            group.position.set(loadedPositionRef.current.x, yo, loadedPositionRef.current.z);
+            group.rotation.set(0, Math.PI, 0);
+          } else if (currentMotion === "knit") {
+            group.position.set(loadedPositionRef.current.x, yo, loadedPositionRef.current.z);
+            group.rotation.set(0, Math.PI, 0);
+            meshes.forEach((m) => m.position.set(0, 0, 0));
+            if (cameraRef.current) {
+              cameraRef.current.position.z = THREE.MathUtils.lerp(cameraRef.current.position.z, 5.0, 0.05);
+            }
+          } else {
+            group.position.copy(loadedPositionRef.current);
+            group.rotation.set(0, Math.PI, 0);
+            meshes.forEach((m) => m.position.set(0, 0, 0));
+          }
         }
 
-        controlsRef.current?.update();
+        if (controlsRef.current) {
+          if (stateRef.current.cameraAnim === "rotate" || stateRef.current.cameraAnim === "orbit-zoom" || stateRef.current.autoRotate) {
+            controlsRef.current.autoRotate = true;
+            controlsRef.current.autoRotateSpeed = (stateRef.current.rotateSpeed || 0.9) * 3.5;
+          } else {
+            controlsRef.current.autoRotate = false;
+          }
+          controlsRef.current.update();
+        }
         rendererRef.current?.render(scene, camera);
       };
       render();
@@ -690,22 +755,29 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
     }, [mounted]);
 
     // Setup material shader injection
-    const setupMeshMaterial = (mesh: THREE.Mesh) => {
+    const setupMeshMaterial = (
+      mesh: THREE.Mesh,
+      modelAoTex: THREE.Texture | null = null,
+      modelNormalTex: THREE.Texture | null = null
+    ) => {
       const name = mesh.name.toLowerCase();
       const isOutside =
         name.includes("outside") ||
         name.includes("body") ||
         name.includes("sleeve") ||
-        name.includes("collar");
+        name.includes("collar") ||
+        name.includes("tshirt") ||
+        name.includes("cap");
 
-      const aoMap = isOutside ? defaultOutsideAORef.current : defaultInsideAORef.current;
+      const aoMap = modelAoTex || (isOutside ? defaultOutsideAORef.current : defaultInsideAORef.current);
+      const normalMap = modelNormalTex || normalFabricRef.current;
 
       const material = new THREE.MeshStandardMaterial({
         color: new THREE.Color("#ffffff"),
         roughness: 0.85,
         metalness: 0.0,
         map: aoMap,
-        normalMap: normalFabricRef.current,
+        normalMap: normalMap,
         normalScale: new THREE.Vector2(0.08, 0.08),
         side: THREE.DoubleSide,
         depthWrite: true,
@@ -713,18 +785,20 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         alphaTest: 0,
       });
 
+      const isTop = !["sweatpants", "cap"].includes(stateRef.current.modelSlug);
+
       material.onBeforeCompile = (shader) => {
         shader.uniforms.uGarmentColor = { value: new THREE.Color(stateRef.current.color) };
         shader.uniforms.uSleevesColor = { value: new THREE.Color(stateRef.current.color) };
         shader.uniforms.uCollarColor = { value: new THREE.Color(stateRef.current.color) };
-        shader.uniforms.uOutsideAoTex = { value: defaultOutsideAORef.current };
-        shader.uniforms.uInsideAoTex = { value: defaultInsideAORef.current };
+        shader.uniforms.uOutsideAoTex = { value: aoMap || defaultOutsideAORef.current };
+        shader.uniforms.uInsideAoTex = { value: aoMap || defaultInsideAORef.current };
         shader.uniforms.uAcidWashTex = { value: acidWashTextureRef.current };
         shader.uniforms.uAcidWashIntensity = { value: stateRef.current.acidWash };
         shader.uniforms.uDesignTex = {
           value: activeDesignTextureRef.current || defaultOutsideAORef.current,
         };
-        shader.uniforms.uDesignEnabled = { value: true };
+        shader.uniforms.uDesignEnabled = { value: isTop && Boolean(activeDesignTextureRef.current) };
         shader.uniforms.uDesignScale = { value: stateRef.current.designScale };
         shader.uniforms.uDesignX = { value: stateRef.current.designX };
         shader.uniforms.uDesignY = { value: stateRef.current.designY };
