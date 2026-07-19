@@ -14,6 +14,7 @@ import {
   LOGO_PLACEMENTS,
   LOGO_PRESETS,
   formatINR,
+  products,
 } from "@/lib/products";
 import { useCart } from "@/store/cart";
 import { Tee3DViewer, type Tee3DViewerHandle } from "@/components/spin/Tee3DViewer";
@@ -93,8 +94,9 @@ export function StudioConfigurator({
   const [exporting, setExporting] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Apparel Type
-  const [apparelType, setApparelType] = useState<"tshirt" | "hoodie" | "sweatshirt">("tshirt");
+  // Map of modelSlug to product metadata/settings
+  const [modelSlug, setModelSlug] = useState<string>("oversized-tshirt");
+  const isTop = !["sweatpants", "cap"].includes(modelSlug);
 
   // Advanced Shader States
   const [acidWash, setAcidWash] = useState(0.0);

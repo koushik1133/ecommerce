@@ -27,6 +27,7 @@ function getPlacementCode(placement: string): number {
 }
 
 type Tee3DViewerProps = {
+  modelSlug?: string;
   color: string;
   sleevesColor?: string;
   collarColor?: string;
@@ -60,6 +61,7 @@ type Tee3DViewerProps = {
 export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
   function Tee3DViewer(
     {
+      modelSlug = "oversized-tshirt",
       color,
       sleevesColor = color,
       collarColor = color,
@@ -90,6 +92,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
   ) {
     const [mounted, setMounted] = useState(false);
     const [failed, setFailed] = useState(false);
+    const [sceneReady, setSceneReady] = useState(false);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -104,6 +107,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
     const mixerRef = useRef<THREE.AnimationMixer | null>(null);
     const clockRef = useRef<THREE.Clock | null>(null);
     const animationFrameIdRef = useRef<number | null>(null);
+    const loadedPositionRef = useRef<THREE.Vector3>(new THREE.Vector3(0, -0.45, 0));
 
     // Textures refs
     const defaultOutsideAORef = useRef<THREE.Texture | null>(null);
@@ -116,6 +120,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
 
     // Active state container ref to allow access inside render loop
     const stateRef = useRef({
+      modelSlug,
       color,
       sleevesColor: color,
       collarColor: color,
@@ -140,6 +145,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
     // Update mutable state ref when props change
     useEffect(() => {
       stateRef.current = {
+        modelSlug,
         color,
         sleevesColor: color,
         collarColor: color,
@@ -187,6 +193,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         rendererRef.current.setPixelRatio(Math.min(window.devicePixelRatio, dprRatio));
       }
     }, [
+      modelSlug,
       color,
       background,
       acidWash,
@@ -256,6 +263,151 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         }
       }
     }, [logoDataUrl, logoLabel, color, mounted]);
+
+    // Load GLTF Model dynamically when scene is ready or modelSlug changes
+    useEffect(() => {
+      if (!sceneReady || !sceneRef.current) return;
+
+      // 1. Clean up/dispose previous model if it exists
+      if (tshirtGroupRef.current) {
+        sceneRef.current.remove(tshirtGroupRef.current);
+        tshirtGroupRef.current.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry?.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach((m) => m.dispose());
+            } else {
+              child.material?.dispose();
+            }
+          }
+        });
+        tshirtGroupRef.current = null;
+      }
+      tshirtMeshesRef.current = [];
+      if (mixerRef.current) {
+        mixerRef.current.stopAllAction();
+        mixerRef.current = null;
+      }
+
+      // 2. Load the new GLTF model
+      const gltfLoader = new GLTFLoader();
+      gltfLoader.load(
+        `/model/${modelSlug}/tshirt-sizingtest.gltf`,
+        (gltf) => {
+          const tshirtGroup = gltf.scene;
+          tshirtGroupRef.current = tshirtGroup;
+
+          // Reset pivots
+          tshirtGroup.traverse((child) => {
+            if (child.name.toLowerCase().includes("pivot")) {
+              child.scale.set(1, 1, 1);
+            }
+          });
+
+          // Compute size and center
+          const box = new THREE.Box3();
+          let hasMesh = false;
+          tshirtGroup.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              const name = child.name.toLowerCase();
+              if (
+                name.includes("env") ||
+                name.includes("bg") ||
+                name.includes("camera") ||
+                name.includes("sphere")
+              ) {
+                child.visible = false;
+              } else {
+                box.expandByObject(child);
+                hasMesh = true;
+              }
+            }
+          });
+
+          if (!hasMesh) {
+            box.setFromObject(tshirtGroup);
+          }
+
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+
+          // Determine scaleVal & yOffset dynamically per modelSlug:
+          let scaleVal = 1.6;
+          let yOffset = -0.2;
+          if (modelSlug === "cap") {
+            scaleVal = 1.0;
+            yOffset = -0.1;
+          } else if (modelSlug === "sweatpants") {
+            scaleVal = 1.8;
+            yOffset = 0.1;
+          }
+
+          const finalScale = scaleVal / (maxDim > 0 ? maxDim : 1);
+
+          tshirtGroup.scale.setScalar(finalScale);
+          tshirtGroup.position.set(
+            -center.x * finalScale,
+            -center.y * finalScale + yOffset,
+            -center.z * finalScale
+          );
+          loadedPositionRef.current.copy(tshirtGroup.position);
+
+          sceneRef.current.add(tshirtGroup);
+
+          // Configure meshes and materials
+          tshirtGroup.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              const name = child.name.toLowerCase();
+              if (
+                name.includes("env") ||
+                name.includes("bg") ||
+                name.includes("camera") ||
+                name.includes("sphere")
+              ) {
+                child.visible = false;
+                return;
+              }
+
+              if (child.geometry && child.geometry.attributes.uv && !child.geometry.attributes.uv2) {
+                child.geometry.setAttribute("uv2", child.geometry.attributes.uv);
+              }
+
+              child.castShadow = true;
+              child.receiveShadow = true;
+              tshirtMeshesRef.current.push(child);
+
+              setupMeshMaterial(child);
+            }
+          });
+
+          if (gltf.animations && gltf.animations.length > 0) {
+            mixerRef.current = new THREE.AnimationMixer(tshirtGroup);
+          }
+
+          // Apply current state settings to the newly loaded model
+          updateGarmentColors();
+          updateUniform("uAcidWashIntensity", stateRef.current.acidWash);
+          updateUniform("uPuffPrintHeight", stateRef.current.puffPrint);
+          updateUniform("uDesignScale", stateRef.current.designScale);
+          updateUniform("uDesignX", stateRef.current.designX);
+          updateUniform("uDesignY", stateRef.current.designY);
+          updateUniform("uLogoColor", new THREE.Color(stateRef.current.logoColor));
+          updateUniform("uDyeLogo", stateRef.current.dyeLogo);
+          updateUniform("uPlacement", getPlacementCode(stateRef.current.placement));
+
+          if (activeDesignTextureRef.current) {
+            updateUniform("uDesignTex", activeDesignTextureRef.current);
+            updateUniform("uDesignEnabled", true);
+          }
+        },
+        undefined,
+        (err) => {
+          console.error("Error loading GLTF model:", err);
+          setFailed(true);
+        }
+      );
+    }, [sceneReady, modelSlug]);
 
     // Set client mounted state
     useEffect(() => {
@@ -367,96 +519,6 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         hdrTex.mapping = THREE.EquirectangularReflectionMapping;
         scene.environment = hdrTex;
       });
-
-      // 4. Load GLTF Model
-      gltfLoader.load(
-        "/model/tshirt-sizingtest.gltf",
-        (gltf) => {
-          const tshirtGroup = gltf.scene;
-          tshirtGroupRef.current = tshirtGroup;
-
-          // Reset pivots
-          tshirtGroup.traverse((child) => {
-            if (child.name.toLowerCase().includes("pivot")) {
-              child.scale.set(1, 1, 1);
-            }
-          });
-
-          // Compute size and center
-          const box = new THREE.Box3();
-          let hasMesh = false;
-          tshirtGroup.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              const name = child.name.toLowerCase();
-              if (
-                name.includes("env") ||
-                name.includes("bg") ||
-                name.includes("camera") ||
-                name.includes("sphere")
-              ) {
-                child.visible = false;
-              } else {
-                box.expandByObject(child);
-                hasMesh = true;
-              }
-            }
-          });
-
-          if (!hasMesh) {
-            box.setFromObject(tshirtGroup);
-          }
-
-          const center = box.getCenter(new THREE.Vector3());
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const scaleVal = 1.6 / (maxDim > 0 ? maxDim : 1);
-
-          tshirtGroup.scale.setScalar(scaleVal);
-          tshirtGroup.position.set(
-            -center.x * scaleVal,
-            -center.y * scaleVal - 0.2,
-            -center.z * scaleVal
-          );
-
-          scene.add(tshirtGroup);
-
-          // Configure meshes and materials
-          tshirtMeshesRef.current = [];
-          tshirtGroup.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              const name = child.name.toLowerCase();
-              if (
-                name.includes("env") ||
-                name.includes("bg") ||
-                name.includes("camera") ||
-                name.includes("sphere")
-              ) {
-                child.visible = false;
-                return;
-              }
-
-              if (child.geometry && child.geometry.attributes.uv && !child.geometry.attributes.uv2) {
-                child.geometry.setAttribute("uv2", child.geometry.attributes.uv);
-              }
-
-              child.castShadow = true;
-              child.receiveShadow = true;
-              tshirtMeshesRef.current.push(child);
-
-              setupMeshMaterial(child);
-            }
-          });
-
-          if (gltf.animations && gltf.animations.length > 0) {
-            mixerRef.current = new THREE.AnimationMixer(tshirtGroup);
-          }
-        },
-        undefined,
-        (err) => {
-          console.error("Error loading GLTF model:", err);
-          setFailed(true);
-        }
-      );
 
       // 5. Setup Resize Handler
       const handleResize = () => {
@@ -573,7 +635,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           const group = tshirtGroupRef.current;
           const meshes = tshirtMeshesRef.current;
           
-          group.position.y = -0.45;
+          group.position.copy(loadedPositionRef.current);
           group.rotation.set(0, Math.PI, 0);
           meshes.forEach((m) => {
             m.position.set(0, 0, 0);
@@ -584,6 +646,8 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         rendererRef.current?.render(scene, camera);
       };
       render();
+
+      setSceneReady(true);
 
       return () => {
         window.removeEventListener("resize", handleResize);
@@ -596,6 +660,8 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         if (animationFrameIdRef.current) {
           cancelAnimationFrame(animationFrameIdRef.current);
         }
+
+        setSceneReady(false);
 
         // Dispose textures
         [
