@@ -4,21 +4,26 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
-import { ContactShadows, OrbitControls, RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
+import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import type { LogoPlacement } from "@/lib/products";
 
 export type Tee3DViewerHandle = {
   exportPng: () => string | null;
+  export3d?: () => void;
+  exportVideo?: (onProgress: (p: number) => void, onComplete: () => void) => void;
 };
 
 type Tee3DViewerProps = {
   color: string;
+  sleevesColor?: string;
+  collarColor?: string;
   logoLabel?: string;
   logoDataUrl?: string;
   placement?: LogoPlacement;
@@ -28,331 +33,771 @@ type Tee3DViewerProps = {
   rotateSpeed?: number;
   className?: string;
   showHint?: boolean;
+  // Advanced shader props
+  acidWash?: number;
+  puffPrint?: number;
+  designScale?: number;
+  designX?: number;
+  designY?: number;
+  motion?: "static" | "walk" | "waves" | "knit";
+  motionSpeed?: number;
+  cameraAnim?: "none" | "rotate" | "orbit-zoom";
+  renderQuality?: "fast" | "high";
+  frameSize?: "auto" | "portrait";
 };
-
-function useLogoTexture(logoDataUrl?: string, logoLabel?: string, ink = "#111") {
-  const [texture, setTexture] = useState<THREE.CanvasTexture | null>(null);
-
-  useEffect(() => {
-    let disposed = false;
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
-
-    const commit = () => {
-      if (disposed) return;
-      tex.needsUpdate = true;
-      setTexture(tex);
-    };
-
-    const paintText = () => {
-      ctx.clearRect(0, 0, 512, 512);
-      ctx.fillStyle = ink;
-      ctx.font = "700 110px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText((logoLabel || "brand").slice(0, 12), 256, 256);
-      commit();
-    };
-
-    if (logoDataUrl) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, 512, 512);
-        const scale = Math.min(440 / img.width, 440 / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        ctx.drawImage(img, (512 - w) / 2, (512 - h) / 2, w, h);
-        commit();
-      };
-      img.onerror = paintText;
-      img.src = logoDataUrl;
-    } else {
-      paintText();
-    }
-
-    return () => {
-      disposed = true;
-      tex.dispose();
-    };
-  }, [logoDataUrl, logoLabel, ink]);
-
-  return texture;
-}
-
-function FabricMaterial({ color }: { color: string }) {
-  return (
-    <meshStandardMaterial
-      color={color}
-      roughness={0.82}
-      metalness={0.02}
-      envMapIntensity={0.45}
-    />
-  );
-}
-
-function TeeModel({
-  color,
-  logoTexture,
-  placement,
-}: {
-  color: string;
-  logoTexture: THREE.Texture | null;
-  placement: LogoPlacement;
-}) {
-  const isDark = useMemo(() => {
-    const c = new THREE.Color(color);
-    return c.r * 0.299 + c.g * 0.587 + c.b * 0.114 < 0.45;
-  }, [color]);
-
-  const logoPos = useMemo((): {
-    position: [number, number, number];
-    rotation: [number, number, number];
-    scale: number;
-  } => {
-    if (placement === "back") {
-      return { position: [0, 0.25, -0.16], rotation: [0, Math.PI, 0], scale: 0.52 };
-    }
-    if (placement === "chest-left") {
-      return { position: [-0.32, 0.42, 0.16], rotation: [0, 0, 0], scale: 0.22 };
-    }
-    return { position: [0, 0.38, 0.16], rotation: [0, 0, 0], scale: 0.36 };
-  }, [placement]);
-
-  return (
-    <group>
-      {/* Body — flatter, more garment-like */}
-      <RoundedBox args={[1.55, 1.85, 0.28]} radius={0.14} smoothness={12} position={[0, 0.05, 0]}>
-        <FabricMaterial color={color} />
-      </RoundedBox>
-      {/* Shoulder bridge */}
-      <RoundedBox args={[1.35, 0.28, 0.26]} radius={0.1} smoothness={10} position={[0, 1.02, 0]}>
-        <FabricMaterial color={color} />
-      </RoundedBox>
-      {/* Collar band */}
-      <mesh position={[0, 1.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.2, 0.04, 20, 48]} />
-        <FabricMaterial color={color} />
-      </mesh>
-      <mesh position={[0, 1.2, 0.01]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.155, 0.022, 16, 40]} />
-        <meshStandardMaterial
-          color={isDark ? "#2c2c2c" : "#ebe8e2"}
-          roughness={0.92}
-          metalness={0}
-        />
-      </mesh>
-      {/* Sleeves — thinner, longer */}
-      <RoundedBox
-        args={[0.72, 0.32, 0.26]}
-        radius={0.1}
-        smoothness={10}
-        position={[-0.98, 0.78, 0]}
-        rotation={[0, 0, 0.55]}
-      >
-        <FabricMaterial color={color} />
-      </RoundedBox>
-      <RoundedBox
-        args={[0.72, 0.32, 0.26]}
-        radius={0.1}
-        smoothness={10}
-        position={[0.98, 0.78, 0]}
-        rotation={[0, 0, -0.55]}
-      >
-        <FabricMaterial color={color} />
-      </RoundedBox>
-      {/* Hem */}
-      <RoundedBox args={[1.58, 0.1, 0.3]} radius={0.05} smoothness={8} position={[0, -0.88, 0]}>
-        <FabricMaterial color={color} />
-      </RoundedBox>
-
-      {logoTexture ? (
-        <mesh position={logoPos.position} rotation={logoPos.rotation} scale={logoPos.scale}>
-          <planeGeometry args={[1, 1]} />
-          <meshStandardMaterial
-            map={logoTexture}
-            transparent
-            depthWrite={false}
-            roughness={0.55}
-            metalness={0.05}
-          />
-        </mesh>
-      ) : null}
-    </group>
-  );
-}
-
-function SceneBackground({ color }: { color: string }) {
-  const { scene, gl } = useThree();
-  useEffect(() => {
-    const c = new THREE.Color(color);
-    scene.background = c;
-    gl.setClearColor(c, 1);
-  }, [color, scene, gl]);
-  return null;
-}
-
-function CaptureBridge({
-  captureRef,
-}: {
-  captureRef: React.MutableRefObject<(() => string | null) | null>;
-}) {
-  const { gl, scene, camera } = useThree();
-  useEffect(() => {
-    captureRef.current = () => {
-      try {
-        gl.render(scene, camera);
-        return gl.domElement.toDataURL("image/png");
-      } catch {
-        return null;
-      }
-    };
-    return () => {
-      captureRef.current = null;
-    };
-  }, [gl, scene, camera, captureRef]);
-  return null;
-}
-
-function Scene({
-  color,
-  logoDataUrl,
-  logoLabel,
-  placement,
-  autoRotate,
-  rotateSpeed,
-  captureRef,
-  clearColor,
-}: {
-  color: string;
-  logoDataUrl?: string;
-  logoLabel?: string;
-  placement: LogoPlacement;
-  autoRotate: boolean;
-  rotateSpeed: number;
-  captureRef: React.MutableRefObject<(() => string | null) | null>;
-  clearColor: string;
-}) {
-  const isDark = useMemo(() => {
-    const c = new THREE.Color(color);
-    return c.r * 0.299 + c.g * 0.587 + c.b * 0.114 < 0.45;
-  }, [color]);
-
-  const logoTexture = useLogoTexture(
-    logoDataUrl,
-    logoLabel,
-    isDark ? "#f5f5f4" : "#111111"
-  );
-
-  return (
-    <>
-      <SceneBackground color={clearColor} />
-      <ambientLight intensity={0.65} />
-      <directionalLight position={[4, 6, 3]} intensity={1.25} castShadow />
-      <directionalLight position={[-3, 2, -2]} intensity={0.4} />
-      <hemisphereLight args={["#ffffff", "#e8e6e1", 0.35]} />
-      <TeeModel color={color} logoTexture={logoTexture} placement={placement} />
-      <ContactShadows
-        position={[0, -1.05, 0]}
-        opacity={0.35}
-        scale={8}
-        blur={2.4}
-        far={4}
-      />
-      <OrbitControls
-        makeDefault
-        target={[0, 0.15, 0]}
-        enablePan={false}
-        enableDamping
-        dampingFactor={0.08}
-        minPolarAngle={0.7}
-        maxPolarAngle={1.75}
-        minDistance={2.4}
-        maxDistance={6}
-        autoRotate={autoRotate}
-        autoRotateSpeed={rotateSpeed}
-      />
-      <CaptureBridge captureRef={captureRef} />
-    </>
-  );
-}
-
-function resolveBg(background?: string) {
-  if (!background) return "#f4f4f2";
-  if (background.startsWith("#")) return background;
-  if (background.includes("0f0f0f") || background.includes("1a1a1a")) return "#141414";
-  if (background.includes("e8f5f1")) return "#e8f5f1";
-  if (background.includes("fafaf9")) return "#fafaf9";
-  if (background.includes("ffffff")) return "#f4f4f2";
-  return "#f4f4f2";
-}
 
 export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
   function Tee3DViewer(
     {
       color,
+      sleevesColor = color,
+      collarColor = color,
       logoLabel = "brand",
       logoDataUrl,
       placement = "chest-center",
-      background,
+      background = "#f4f4f2",
       customBackgroundUrl,
       autoRotate = true,
       rotateSpeed = 0.9,
       className = "",
       showHint = true,
+      acidWash = 0,
+      puffPrint = 0,
+      designScale = 1,
+      designX = 0,
+      designY = 0,
+      motion = "static",
+      motionSpeed = 0.5,
+      cameraAnim = "none",
+      renderQuality = "fast",
+      frameSize = "auto",
     },
     ref
   ) {
-    const bgColor = customBackgroundUrl ? "#121212" : resolveBg(background);
     const [mounted, setMounted] = useState(false);
     const [failed, setFailed] = useState(false);
-    const captureRef = useRef<(() => string | null) | null>(null);
-    const wrapRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => setMounted(true), []);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
+    // Three.js instances refs
+    const sceneRef = useRef<THREE.Scene | null>(null);
+    const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+    const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+    const controlsRef = useRef<OrbitControls | null>(null);
+    const tshirtGroupRef = useRef<THREE.Group | null>(null);
+    const tshirtMeshesRef = useRef<THREE.Mesh[]>([]);
+    const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+    const clockRef = useRef<THREE.Clock | null>(null);
+    const animationFrameIdRef = useRef<number | null>(null);
+
+    // Textures refs
+    const defaultOutsideAORef = useRef<THREE.Texture | null>(null);
+    const defaultInsideAORef = useRef<THREE.Texture | null>(null);
+    const normalFabricRef = useRef<THREE.Texture | null>(null);
+    const normalDetailsRef = useRef<THREE.Texture | null>(null);
+    const acidWashTextureRef = useRef<THREE.Texture | null>(null);
+    const activeDesignTextureRef = useRef<THREE.Texture | null>(null);
+    const textPresetTextureRef = useRef<THREE.Texture | null>(null);
+
+    // Active state container ref to allow access inside render loop
+    const stateRef = useRef({
+      color,
+      sleevesColor,
+      collarColor,
+      background,
+      acidWash,
+      puffPrint,
+      designScale,
+      designX,
+      designY,
+      motion,
+      motionSpeed,
+      cameraAnim,
+      renderQuality,
+      frameSize,
+      autoRotate,
+      rotateSpeed,
+    });
+
+    // Update mutable state ref when props change
+    useEffect(() => {
+      stateRef.current = {
+        color,
+        sleevesColor,
+        collarColor,
+        background,
+        acidWash,
+        puffPrint,
+        designScale,
+        designX,
+        designY,
+        motion,
+        motionSpeed,
+        cameraAnim,
+        renderQuality,
+        frameSize,
+        autoRotate,
+        rotateSpeed,
+      };
+
+      // Apply immediate modifications to stateful components
+      if (sceneRef.current) {
+        sceneRef.current.background = new THREE.Color(background);
+      }
+      updateGarmentColors();
+      updateUniform("uAcidWashIntensity", acidWash);
+      updateUniform("uPuffPrintHeight", puffPrint);
+      updateUniform("uDesignScale", designScale);
+      updateUniform("uDesignX", designX);
+      updateUniform("uDesignY", designY);
+
+      if (controlsRef.current) {
+        controlsRef.current.autoRotate = autoRotate || cameraAnim !== "none";
+        controlsRef.current.autoRotateSpeed =
+          cameraAnim === "rotate"
+            ? motionSpeed * 4.0
+            : cameraAnim === "orbit-zoom"
+            ? motionSpeed * 3.0
+            : rotateSpeed * 2.0;
+      }
+
+      if (rendererRef.current) {
+        const dprRatio = renderQuality === "high" ? 2.5 : 1.5;
+        rendererRef.current.setPixelRatio(Math.min(window.devicePixelRatio, dprRatio));
+      }
+    }, [
+      color,
+      sleevesColor,
+      collarColor,
+      background,
+      acidWash,
+      puffPrint,
+      designScale,
+      designX,
+      designY,
+      motion,
+      motionSpeed,
+      cameraAnim,
+      renderQuality,
+      frameSize,
+      autoRotate,
+      rotateSpeed,
+    ]);
+
+    // Handle design texture upload changes
+    useEffect(() => {
+      if (!mounted || !sceneRef.current) return;
+
+      const textureLoader = new THREE.TextureLoader();
+
+      const applyDesignTexture = (texture: THREE.Texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        activeDesignTextureRef.current = texture;
+
+        updateUniform("uDesignTex", texture);
+        updateUniform("uDesignEnabled", true);
+      };
+
+      if (logoDataUrl) {
+        textureLoader.load(
+          logoDataUrl,
+          (texture) => {
+            applyDesignTexture(texture);
+          },
+          undefined,
+          (err) => console.error("Error loading design texture", err)
+        );
+      } else {
+        // Draw Text Logo onto CanvasTexture
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.clearRect(0, 0, 512, 512);
+
+          // Choose text color based on garment brightness
+          const c = new THREE.Color(color);
+          const isDark = c.r * 0.299 + c.g * 0.587 + c.b * 0.114 < 0.45;
+          ctx.fillStyle = isDark ? "#ffffff" : "#111111";
+
+          ctx.font = "bold 90px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText((logoLabel || "brand").slice(0, 12), 256, 256);
+
+          const textTexture = new THREE.CanvasTexture(canvas);
+          textTexture.colorSpace = THREE.SRGBColorSpace;
+          applyDesignTexture(textTexture);
+        }
+      }
+    }, [logoDataUrl, logoLabel, color, mounted]);
+
+    // Set client mounted state
+    useEffect(() => {
+      setMounted(true);
+      return () => {
+        if (animationFrameIdRef.current) {
+          cancelAnimationFrame(animationFrameIdRef.current);
+        }
+      };
+    }, []);
+
+    // Initialize WebGL engine once mounted
+    useEffect(() => {
+      if (!mounted) return;
+
+      const container = containerRef.current;
+      const canvas = canvasRef.current;
+      if (!container || !canvas) return;
+
+      // 1. Init Engine
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(stateRef.current.background);
+      sceneRef.current = scene;
+
+      const camera = new THREE.PerspectiveCamera(
+        45,
+        container.clientWidth / container.clientHeight,
+        0.1,
+        100
+      );
+      camera.position.set(0, 0.3, 16.5);
+      cameraRef.current = camera;
+
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true,
+      });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.0;
+      rendererRef.current = renderer;
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 6;
+      controls.maxDistance = 25;
+      controls.maxPolarAngle = Math.PI / 1.8;
+      controls.target.set(0, 0, 0);
+      controlsRef.current = controls;
+
+      // 2. Lighting Setup
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+      scene.add(ambientLight);
+
+      const mainLight = new THREE.DirectionalLight(0xffffff, 0.85);
+      mainLight.position.set(5, 8, 5);
+      mainLight.castShadow = true;
+      mainLight.shadow.mapSize.width = 2048;
+      mainLight.shadow.mapSize.height = 2048;
+      mainLight.shadow.bias = -0.0001;
+      scene.add(mainLight);
+
+      const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
+      fillLight.position.set(-5, 3, -5);
+      scene.add(fillLight);
+
+      const rimLight = new THREE.DirectionalLight(0xffffff, 0.65);
+      rimLight.position.set(0, 5, -8);
+      scene.add(rimLight);
+
+      // 3. Loaders & Textures
+      const textureLoader = new THREE.TextureLoader();
+      const gltfLoader = new GLTFLoader();
+
+      // Load texture sheets
+      defaultOutsideAORef.current = textureLoader.load("/textures/ao_tshirt_outside.jpg");
+      defaultInsideAORef.current = textureLoader.load("/textures/ao_tshirt_inside.jpg");
+      normalFabricRef.current = textureLoader.load("/textures/NormalFabric.png");
+      normalDetailsRef.current = textureLoader.load("/textures/normaldetailsv2.jpg");
+      acidWashTextureRef.current = textureLoader.load("/textures/acidwash.jpg");
+
+      const textures = [
+        defaultOutsideAORef.current,
+        defaultInsideAORef.current,
+        normalFabricRef.current,
+        normalDetailsRef.current,
+        acidWashTextureRef.current,
+      ];
+
+      textures.forEach((tex) => {
+        if (tex) {
+          tex.wrapS = THREE.RepeatWrapping;
+          tex.wrapT = THREE.RepeatWrapping;
+          tex.flipY = false;
+        }
+      });
+
+      if (normalFabricRef.current) {
+        normalFabricRef.current.repeat.set(120, 120);
+      }
+
+      // Load Studio Environment
+      new RGBELoader().load("/textures/studio_env.hdr", (hdrTex) => {
+        hdrTex.mapping = THREE.EquirectangularReflectionMapping;
+        scene.environment = hdrTex;
+      });
+
+      // 4. Load GLTF Model
+      gltfLoader.load(
+        "/model/tshirt-sizingtest.gltf",
+        (gltf) => {
+          const tshirtGroup = gltf.scene;
+          tshirtGroupRef.current = tshirtGroup;
+
+          // Reset pivots
+          tshirtGroup.traverse((child) => {
+            if (child.name.toLowerCase().includes("pivot")) {
+              child.scale.set(1, 1, 1);
+            }
+          });
+
+          // Compute size and center
+          const box = new THREE.Box3();
+          let hasMesh = false;
+          tshirtGroup.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              const name = child.name.toLowerCase();
+              if (
+                name.includes("env") ||
+                name.includes("bg") ||
+                name.includes("camera") ||
+                name.includes("sphere")
+              ) {
+                child.visible = false;
+              } else {
+                box.expandByObject(child);
+                hasMesh = true;
+              }
+            }
+          });
+
+          if (!hasMesh) {
+            box.setFromObject(tshirtGroup);
+          }
+
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const scaleVal = 1.6 / (maxDim > 0 ? maxDim : 1);
+
+          tshirtGroup.scale.setScalar(scaleVal);
+          tshirtGroup.position.set(
+            -center.x * scaleVal,
+            -center.y * scaleVal - 0.2,
+            -center.z * scaleVal
+          );
+
+          scene.add(tshirtGroup);
+
+          // Configure meshes and materials
+          tshirtMeshesRef.current = [];
+          tshirtGroup.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              const name = child.name.toLowerCase();
+              if (
+                name.includes("env") ||
+                name.includes("bg") ||
+                name.includes("camera") ||
+                name.includes("sphere")
+              ) {
+                child.visible = false;
+                return;
+              }
+
+              if (child.geometry && child.geometry.attributes.uv && !child.geometry.attributes.uv2) {
+                child.geometry.setAttribute("uv2", child.geometry.attributes.uv);
+              }
+
+              child.castShadow = true;
+              child.receiveShadow = true;
+              tshirtMeshesRef.current.push(child);
+
+              setupMeshMaterial(child);
+            }
+          });
+
+          if (gltf.animations && gltf.animations.length > 0) {
+            mixerRef.current = new THREE.AnimationMixer(tshirtGroup);
+          }
+        },
+        undefined,
+        (err) => {
+          console.error("Error loading GLTF model:", err);
+          setFailed(true);
+        }
+      );
+
+      // 5. Setup Resize Handler
+      const handleResize = () => {
+        if (!containerRef.current || !cameraRef.current || !rendererRef.current) return;
+        const w = containerRef.current.clientWidth;
+        const h = containerRef.current.clientHeight;
+
+        cameraRef.current.aspect = w / h;
+        cameraRef.current.updateProjectionMatrix();
+
+        rendererRef.current.setSize(w, h);
+      };
+      window.addEventListener("resize", handleResize);
+
+      // 6. Animation Render Loop
+      const clock = new THREE.Clock();
+      clockRef.current = clock;
+
+      const render = () => {
+        animationFrameIdRef.current = requestAnimationFrame(render);
+
+        const delta = clock.getDelta();
+        const time = clock.getElapsedTime();
+
+        if (mixerRef.current) {
+          mixerRef.current.update(delta * stateRef.current.motionSpeed);
+        }
+
+        if (tshirtGroupRef.current) {
+          const group = tshirtGroupRef.current;
+          const meshes = tshirtMeshesRef.current;
+          const activeMotion = stateRef.current.motion;
+          const speed = stateRef.current.motionSpeed;
+
+          if (activeMotion === "walk") {
+            const sway = speed * 4.0;
+            group.position.y = -0.45 + Math.sin(time * sway) * 0.05;
+            group.rotation.y = Math.PI + Math.sin(time * (sway * 0.5)) * 0.08;
+            group.rotation.z = Math.cos(time * (sway * 0.5)) * 0.03;
+            meshes.forEach((m) => m.position.set(0, 0, 0));
+          } else if (activeMotion === "waves") {
+            const waveSpeed = time * speed * 8.0;
+            meshes.forEach((mesh) => {
+              mesh.rotation.y = 0;
+              mesh.rotation.z = 0;
+              mesh.position.z = Math.sin(waveSpeed + mesh.id) * 0.02;
+              mesh.position.y = Math.cos(waveSpeed * 0.7 + mesh.id) * 0.01;
+            });
+            group.position.y = -0.45;
+            group.rotation.set(0, Math.PI, 0);
+          } else if (activeMotion === "knit") {
+            group.position.set(0, -0.45, 0);
+            group.rotation.set(0, Math.PI, 0);
+            meshes.forEach((m) => m.position.set(0, 0, 0));
+
+            const targetZoom = 3.3;
+            if (cameraRef.current) {
+              cameraRef.current.position.z = THREE.MathUtils.lerp(
+                cameraRef.current.position.z,
+                targetZoom,
+                0.05
+              );
+            }
+            controlsRef.current?.target.set(0, 0.2, 0);
+          } else {
+            // Static mode
+            group.position.y = -0.45;
+            group.rotation.set(0, Math.PI, 0);
+            meshes.forEach((m) => m.position.set(0, 0, 0));
+          }
+        }
+
+        // Camera Autoplay Zoom Orbit Pulse
+        if (stateRef.current.cameraAnim === "orbit-zoom" && cameraRef.current) {
+          const dist = 6.8 + Math.sin(time * 0.5) * 1.3;
+          const targetPos = cameraRef.current.position.clone().normalize().multiplyScalar(dist);
+          cameraRef.current.position.lerp(targetPos, 0.02);
+        }
+
+        controlsRef.current?.update();
+        rendererRef.current?.render(scene, camera);
+      };
+      render();
+
+      return () => {
+        window.removeEventListener("resize", handleResize);
+        if (animationFrameIdRef.current) {
+          cancelAnimationFrame(animationFrameIdRef.current);
+        }
+
+        // Dispose textures
+        [
+          defaultOutsideAORef.current,
+          defaultInsideAORef.current,
+          normalFabricRef.current,
+          normalDetailsRef.current,
+          acidWashTextureRef.current,
+          activeDesignTextureRef.current,
+          textPresetTextureRef.current,
+        ].forEach((tex) => tex?.dispose());
+
+        // Dispose geometries & materials
+        tshirtMeshesRef.current.forEach((mesh) => {
+          mesh.geometry?.dispose();
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach((m) => m.dispose());
+          } else {
+            mesh.material?.dispose();
+          }
+        });
+
+        renderer.dispose();
+      };
+    }, [mounted]);
+
+    // Setup material shader injection
+    const setupMeshMaterial = (mesh: THREE.Mesh) => {
+      const name = mesh.name.toLowerCase();
+      const isOutside =
+        name.includes("outside") ||
+        name.includes("body") ||
+        name.includes("sleeve") ||
+        name.includes("collar");
+
+      const aoMap = isOutside ? defaultOutsideAORef.current : defaultInsideAORef.current;
+
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color("#ffffff"),
+        roughness: 0.85,
+        metalness: 0.0,
+        map: aoMap,
+        normalMap: normalFabricRef.current,
+        normalScale: new THREE.Vector2(0.08, 0.08),
+        side: THREE.DoubleSide,
+        depthWrite: true,
+      });
+
+      material.onBeforeCompile = (shader) => {
+        shader.uniforms.uGarmentColor = { value: new THREE.Color(stateRef.current.color) };
+        shader.uniforms.uSleevesColor = { value: new THREE.Color(stateRef.current.sleevesColor) };
+        shader.uniforms.uCollarColor = { value: new THREE.Color(stateRef.current.collarColor) };
+        shader.uniforms.uOutsideAoTex = { value: defaultOutsideAORef.current };
+        shader.uniforms.uInsideAoTex = { value: defaultInsideAORef.current };
+        shader.uniforms.uAcidWashTex = { value: acidWashTextureRef.current };
+        shader.uniforms.uAcidWashIntensity = { value: stateRef.current.acidWash };
+        shader.uniforms.uDesignTex = {
+          value: activeDesignTextureRef.current || defaultOutsideAORef.current,
+        };
+        shader.uniforms.uDesignEnabled = { value: true };
+        shader.uniforms.uDesignScale = { value: stateRef.current.designScale };
+        shader.uniforms.uDesignX = { value: stateRef.current.designX };
+        shader.uniforms.uDesignY = { value: stateRef.current.designY };
+
+        shader.fragmentShader =
+          `
+          uniform vec3 uGarmentColor;
+          uniform vec3 uSleevesColor;
+          uniform vec3 uCollarColor;
+          uniform sampler2D uOutsideAoTex;
+          uniform sampler2D uInsideAoTex;
+          uniform sampler2D uAcidWashTex;
+          uniform float uAcidWashIntensity;
+          uniform sampler2D uDesignTex;
+          uniform bool uDesignEnabled;
+          uniform float uDesignScale;
+          uniform float uDesignX;
+          uniform float uDesignY;
+          \n` + shader.fragmentShader;
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <map_fragment>",
+          `
+          vec3 baseColor = uGarmentColor;
+          if (vMapUv.y > 0.82) {
+            baseColor = uSleevesColor;
+          } else if (vMapUv.y < 0.30) {
+            baseColor = uCollarColor;
+          }
+
+          diffuseColor.rgb = baseColor;
+
+          vec4 aoTexColor = gl_FrontFacing
+            ? texture2D(uOutsideAoTex, vMapUv)
+            : texture2D(uInsideAoTex, vMapUv);
+          diffuseColor.rgb *= mix(vec3(1.0), aoTexColor.rgb, 0.6);
+
+          vec4 washColor = texture2D(uAcidWashTex, vMapUv * 2.0);
+          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * washColor.rgb * 1.5, uAcidWashIntensity);
+
+          if (uDesignEnabled && gl_FrontFacing) {
+            float bodyXMin = 0.02;
+            float bodyXMax = 0.48;
+            float bodyYMin = 0.30;
+            float bodyYMax = 0.82;
+
+            if (vMapUv.x >= bodyXMin && vMapUv.x <= bodyXMax &&
+                vMapUv.y >= bodyYMin && vMapUv.y <= bodyYMax) {
+
+              vec2 bodyUv = vec2(
+                (vMapUv.x - bodyXMin) / (bodyXMax - bodyXMin),
+                (vMapUv.y - bodyYMin) / (bodyYMax - bodyYMin)
+              );
+
+              float baseSize = 0.40;
+              float w = baseSize * uDesignScale;
+              float h = baseSize * uDesignScale;
+
+              float cx = 0.50 + uDesignX;
+              float cy = 0.70 + uDesignY;
+
+              float uMin = cx - w * 0.5;
+              float uMax = cx + w * 0.5;
+              float vMin = cy - h * 0.5;
+              float vMax = cy + h * 0.5;
+
+              if (bodyUv.x >= uMin && bodyUv.x <= uMax &&
+                  bodyUv.y >= vMin && bodyUv.y <= vMax) {
+                vec2 projectedUv = vec2(
+                  (bodyUv.x - uMin) / w,
+                  (bodyUv.y - vMin) / h
+                );
+                vec4 designColor = texture2D(uDesignTex, projectedUv);
+                diffuseColor.rgb = mix(diffuseColor.rgb, designColor.rgb, designColor.a);
+              }
+            }
+          }
+          `
+        );
+
+        shader.vertexShader =
+          `
+          uniform float uPuffPrintHeight;
+          \n` + shader.vertexShader;
+
+        material.userData.shader = shader;
+      };
+
+      mesh.material = material;
+    };
+
+    const updateGarmentColors = () => {
+      tshirtMeshesRef.current.forEach((mesh) => {
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        const shader = mat?.userData?.shader;
+        if (shader) {
+          shader.uniforms.uGarmentColor?.value.set(stateRef.current.color);
+          shader.uniforms.uSleevesColor?.value.set(stateRef.current.sleevesColor);
+          shader.uniforms.uCollarColor?.value.set(stateRef.current.collarColor);
+        }
+      });
+    };
+
+    const updateUniform = (name: string, value: unknown) => {
+      tshirtMeshesRef.current.forEach((mesh) => {
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        const shader = mat?.userData?.shader;
+        if (shader && shader.uniforms[name]) {
+          shader.uniforms[name].value = value;
+        }
+      });
+    };
+
+    // Imperative Exporter Handles
     useImperativeHandle(ref, () => ({
-      exportPng: () => captureRef.current?.() ?? null,
+      exportPng: () => {
+        if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return null;
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+        return rendererRef.current.domElement.toDataURL("image/png");
+      },
+      export3d: () => {
+        if (!tshirtGroupRef.current) return;
+        const exporter = new GLTFExporter();
+        exporter.parse(
+          tshirtGroupRef.current,
+          (gltf) => {
+            const blob = new Blob([gltf as ArrayBuffer], { type: "application/octet-stream" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `custom-tshirt-${Date.now()}.glb`;
+            link.click();
+          },
+          (error) => {
+            console.error("An error occurred during GLTF export:", error);
+          },
+          { binary: true }
+        );
+      },
+      exportVideo: (onProgress: (p: number) => void, onComplete: () => void) => {
+        if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
+
+        const renderer = rendererRef.current;
+        const savedCameraAnim = stateRef.current.cameraAnim;
+
+        // Force camera rotation during recording
+        stateRef.current.cameraAnim = "rotate";
+        if (controlsRef.current) {
+          controlsRef.current.autoRotate = true;
+          controlsRef.current.autoRotateSpeed = stateRef.current.motionSpeed * 4.0;
+        }
+
+        const stream = renderer.domElement.captureStream(30);
+        let recorderOptions = { mimeType: "video/webm;codecs=vp9" };
+
+        if (!MediaRecorder.isTypeSupported(recorderOptions.mimeType)) {
+          recorderOptions = { mimeType: "video/webm" };
+        }
+
+        const recordedChunks: Blob[] = [];
+        const recorder = new MediaRecorder(stream, recorderOptions);
+
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) recordedChunks.push(event.data);
+        };
+
+        recorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: "video/webm" });
+          const videoUrl = URL.createObjectURL(blob);
+
+          const link = document.createElement("a");
+          link.href = videoUrl;
+          link.download = `tshirt-animation-${Date.now()}.webm`;
+          link.click();
+
+          // Restore settings
+          stateRef.current.cameraAnim = savedCameraAnim;
+          if (controlsRef.current) {
+            controlsRef.current.autoRotate = stateRef.current.autoRotate || savedCameraAnim !== "none";
+            controlsRef.current.autoRotateSpeed = stateRef.current.rotateSpeed * 2.0;
+          }
+          onComplete();
+        };
+
+        const recordDuration = 5000;
+        const startTime = Date.now();
+
+        recorder.start();
+
+        const progressInterval = setInterval(() => {
+          const elapsed = Date.now() - startTime;
+          const percentage = Math.min(100, Math.floor((elapsed / recordDuration) * 100));
+          onProgress(percentage);
+
+          if (elapsed >= recordDuration) {
+            clearInterval(progressInterval);
+            recorder.stop();
+          }
+        }, 100);
+      },
     }));
-
-    if (!mounted) {
-      return (
-        <div
-          className={`relative h-full w-full min-h-[420px] bg-[#f4f4f2] flex items-center justify-center ${className}`}
-        >
-          <span className="text-xs tracking-[0.18em] uppercase text-muted">
-            Loading 3D…
-          </span>
-        </div>
-      );
-    }
-
-    if (failed) {
-      return (
-        <div
-          className={`relative h-full w-full min-h-[420px] flex items-center justify-center bg-[#f4f4f2] text-sm text-muted px-6 text-center ${className}`}
-        >
-          3D preview unavailable on this device.
-        </div>
-      );
-    }
 
     return (
       <div
-        ref={wrapRef}
+        ref={containerRef}
         className={`relative h-full w-full min-h-[420px] overflow-hidden ${className}`}
         style={{
           background: customBackgroundUrl
             ? "#121212"
             : background?.startsWith("radial")
-              ? background
-              : bgColor,
+            ? background
+            : background,
         }}
       >
         {customBackgroundUrl ? (
@@ -360,43 +805,11 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           <img
             src={customBackgroundUrl}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover opacity-85"
+            className="absolute inset-0 h-full w-full object-cover opacity-85 pointer-events-none"
           />
         ) : null}
 
-        <Canvas
-          className="!absolute inset-0 h-full w-full"
-          frameloop="always"
-          dpr={[1, 1.75]}
-          shadows
-          camera={{ fov: 38, near: 0.1, far: 100, position: [0, 0.4, 4.1] }}
-          gl={{
-            antialias: true,
-            alpha: false,
-            preserveDrawingBuffer: true,
-            powerPreference: "high-performance",
-          }}
-          onCreated={({ gl, scene }) => {
-            const clear = new THREE.Color(bgColor);
-            gl.setClearColor(clear, 1);
-            scene.background = clear;
-            gl.domElement.addEventListener("webglcontextlost", (e) => {
-              e.preventDefault();
-              setFailed(true);
-            });
-          }}
-        >
-          <Scene
-            color={color}
-            logoLabel={logoLabel}
-            logoDataUrl={logoDataUrl}
-            placement={placement}
-            autoRotate={autoRotate}
-            rotateSpeed={rotateSpeed}
-            captureRef={captureRef}
-            clearColor={bgColor}
-          />
-        </Canvas>
+        <canvas ref={canvasRef} className="absolute inset-0 h-full w-full block" />
 
         {showHint ? (
           <p className="absolute bottom-5 left-0 right-0 z-[2] text-center text-[11px] tracking-wide text-black/40 pointer-events-none">
@@ -407,3 +820,4 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
     );
   }
 );
+Tee3DViewer.displayName = "Tee3DViewer";
