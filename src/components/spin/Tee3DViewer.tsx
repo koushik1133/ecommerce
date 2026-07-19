@@ -49,7 +49,6 @@ type Tee3DViewerProps = {
   motionSpeed?: number;
   cameraAnim?: "none" | "rotate" | "orbit-zoom";
   renderQuality?: "fast" | "high";
-  frameSize?: "auto" | "portrait";
   // Logo customization props
   logoColor?: string;
   dyeLogo?: boolean;
@@ -82,7 +81,6 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       motionSpeed = 0.5,
       cameraAnim = "none",
       renderQuality = "fast",
-      frameSize = "auto",
       logoColor = "#ffffff",
       dyeLogo = false,
       interactMode = "orbit",
@@ -131,7 +129,6 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       motionSpeed,
       cameraAnim,
       renderQuality,
-      frameSize,
       autoRotate,
       rotateSpeed,
       logoColor,
@@ -156,7 +153,6 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         motionSpeed,
         cameraAnim,
         renderQuality,
-        frameSize,
         autoRotate,
         rotateSpeed,
         logoColor,
@@ -202,7 +198,6 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       motionSpeed,
       cameraAnim,
       renderQuality,
-      frameSize,
       autoRotate,
       rotateSpeed,
       logoColor,

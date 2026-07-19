@@ -112,7 +112,6 @@ export function StudioConfigurator({
   const [interactMode, setInteractMode] = useState<"orbit" | "drag-logo">("orbit");
 
   // Output settings
-  const [frameSize, setFrameSize] = useState<"auto" | "portrait">("auto");
   const [renderQuality, setRenderQuality] = useState<"fast" | "high">("fast");
 
   // Recording status
@@ -607,30 +606,6 @@ export function StudioConfigurator({
         {/* Frame & Quality settings */}
         <div className="border-t border-black/5 pt-3 space-y-2.5 mt-auto">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-black/55">Frame size:</span>
-            <div className="inline-flex rounded-full bg-[#f0f0ee] p-0.5">
-              <button
-                type="button"
-                onClick={() => setFrameSize("auto")}
-                className={`rounded-full px-2.5 py-0.5 text-[9px] font-semibold transition-colors ${
-                  frameSize === "auto" ? "bg-white shadow text-[#111]" : "text-black/45"
-                }`}
-              >
-                Auto
-              </button>
-              <button
-                type="button"
-                onClick={() => setFrameSize("portrait")}
-                className={`rounded-full px-2.5 py-0.5 text-[9px] font-semibold transition-colors ${
-                  frameSize === "portrait" ? "bg-white shadow text-[#111]" : "text-black/45"
-                }`}
-              >
-                Portrait
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs">
             <span className="text-black/55">Render quality:</span>
             <div className="inline-flex rounded-full bg-[#f0f0ee] p-0.5">
               <button
@@ -691,13 +666,7 @@ export function StudioConfigurator({
       className="relative flex-1 rounded-[22px] overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.06)] border border-black/5 flex items-center justify-center transition-all duration-500 ease-out"
       style={{ background: currentBgColor }}
     >
-      <div
-        className={`relative transition-all duration-500 ease-out ${
-          frameSize === "portrait"
-            ? "w-full max-w-[280px] md:max-w-[300px] aspect-[9/16] rounded-3xl overflow-hidden border border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.15)] bg-[#1a1a1a]"
-            : "w-full h-full"
-        }`}
-      >
+      <div className="relative w-full h-full transition-all duration-500 ease-out">
         <button
           type="button"
           onClick={() => void toggleFullscreen()}
