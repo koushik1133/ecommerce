@@ -363,13 +363,13 @@ export function StudioConfigurator({
                         : "bg-white border-black/10 text-black/70 hover:border-black/25"
                     }`}
                   >
-                    Stitch
+                    Block-out Stitch
                   </button>
                 </div>
                 <p className="text-[9.5px] text-black/40 mt-2 leading-relaxed">
                   {decorType === "stitch"
-                    ? "Stitched embroidery is limited to a maximum scale of 0.80 for hoop size constraints."
-                    : "Printed graphics can be scaled up to 2.50 to cover the full width of the torso."}
+                    ? "Block-out stitch is capped at 0.80 scale — physical embroidery hoop limits apply."
+                    : "Print (Screen/DTG) can scale up to 2.50 to fill the full torso width."}
                 </p>
               </div>
 

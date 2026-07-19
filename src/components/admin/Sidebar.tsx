@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Package, ShoppingBag, Users, BarChart3,
-  Bot, Settings, ChevronRight, Zap, X
+  Bot, Settings, ChevronRight, Zap, X, Mail
 } from "lucide-react";
 import { useAdminUI } from "@/store/admin";
 
@@ -15,6 +15,7 @@ const NAV = [
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/agents", label: "AI Agents", icon: Bot },
+  { href: "/admin/subscribers", label: "Subscribers", icon: Mail },
 ];
 
 const BOTTOM_NAV = [

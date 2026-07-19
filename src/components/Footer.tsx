@@ -34,10 +34,32 @@ const FOOTER_LINKS = [
 
 export function Footer() {
   const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setDone(true);
+    setError(null);
+    const form = e.currentTarget;
+    const email = (form.elements.namedItem("footer-email") as HTMLInputElement)?.value ?? "";
+    setLoading(true);
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (res.ok && data.ok) {
+        setDone(true);
+      } else {
+        setError(data.error ?? "Something went wrong.");
+      }
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -60,18 +82,21 @@ export function Footer() {
                 id="footer-email"
                 type="email"
                 required
-                disabled={done}
+                disabled={done || loading}
                 placeholder="Email for launch updates"
                 className="w-full bg-white/5 border border-white/15 px-4 py-3 text-sm placeholder:text-white/40 focus:outline-none focus:border-accent disabled:opacity-60"
               />
               <button
                 type="submit"
-                disabled={done}
+                disabled={done || loading}
                 className="bg-accent hover:bg-accent-hover disabled:bg-accent/70 text-white px-5 py-3 text-sm font-medium tracking-wide transition-colors whitespace-nowrap"
               >
-                {done ? "You're on the list" : "Notify me"}
+                {done ? "You're on the list ✓" : loading ? "Sending…" : "Notify me"}
               </button>
             </form>
+            {error && (
+              <p className="mt-2 text-xs text-red-400">{error}</p>
+            )}
           </div>
 
           {FOOTER_LINKS.map((col) => (

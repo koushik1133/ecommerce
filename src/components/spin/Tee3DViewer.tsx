@@ -641,7 +641,9 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         normalMap: normalFabricRef.current,
         normalScale: new THREE.Vector2(0.08, 0.08),
         side: THREE.DoubleSide,
-        depthWrite: true,
+        depthWrite: isOutside ? false : true,
+        transparent: isOutside ? true : false,
+        alphaTest: 0,
       });
 
       material.onBeforeCompile = (shader) => {
@@ -762,7 +764,9 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
                 if (uDyeLogo) {
                   finalDesignRgb = uLogoColor * designColor.a;
                 }
-                diffuseColor.rgb = mix(diffuseColor.rgb, finalDesignRgb, designColor.a);
+                float designAlpha = designColor.a;
+                diffuseColor.rgb = mix(diffuseColor.rgb, finalDesignRgb, designAlpha);
+                diffuseColor.a = max(diffuseColor.a, designAlpha);
               }
             }
           }
