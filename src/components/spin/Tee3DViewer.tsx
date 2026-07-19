@@ -266,11 +266,12 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
 
     // Load GLTF Model dynamically when scene is ready or modelSlug changes
     useEffect(() => {
-      if (!sceneReady || !sceneRef.current) return;
+      const scene = sceneRef.current;
+      if (!sceneReady || !scene) return;
 
       // 1. Clean up/dispose previous model if it exists
       if (tshirtGroupRef.current) {
-        sceneRef.current.remove(tshirtGroupRef.current);
+        scene.remove(tshirtGroupRef.current);
         tshirtGroupRef.current.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             child.geometry?.dispose();
@@ -353,7 +354,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           );
           loadedPositionRef.current.copy(tshirtGroup.position);
 
-          sceneRef.current.add(tshirtGroup);
+          sceneRef.current?.add(tshirtGroup);
 
           // Configure meshes and materials
           tshirtGroup.traverse((child) => {

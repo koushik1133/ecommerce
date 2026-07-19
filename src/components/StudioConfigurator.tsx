@@ -227,37 +227,49 @@ export function StudioConfigurator({
         {/* Apparel Type Dropdown */}
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-[0.14em] text-black/45">
-            Apparel Type
+            Select 3D Garment
           </p>
           <select
-            value={apparelType}
-            onChange={(e) => setApparelType(e.target.value as typeof apparelType)}
+            value={modelSlug}
+            onChange={(e) => setModelSlug(e.target.value)}
             className="w-full h-11 px-3.5 rounded-full border border-black/10 bg-[#f7f7f7] text-[13px] font-medium text-[#111] focus:outline-none cursor-pointer"
           >
-            <option value="tshirt">T-Shirt (Active)</option>
-            <option value="hoodie" disabled>Hoodie (Coming Soon)</option>
-            <option value="sweatshirt" disabled>Sweatshirt (Coming Soon)</option>
+            <option value="oversized-tshirt">Oversized T-Shirt</option>
+            <option value="regular-tshirt">Regular T-Shirt</option>
+            <option value="boxy-tshirt">Cropped Boxy T-Shirt</option>
+            <option value="hanging-tshirt">Hanging T-Shirt</option>
+            <option value="sweatshirt">Oversized Sweatshirt</option>
+            <option value="hoodie">Oversized Hoodie</option>
+            <option value="hanging-hoodie">Hanging Hoodie</option>
+            <option value="polo-shirt">Oversized Polo Shirt</option>
+            <option value="zip-hoodie">Zip Hoodie</option>
+            <option value="sweatpants">Sweatpants</option>
+            <option value="cap">Cap</option>
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="w-full h-11 rounded-full bg-[#111] text-white text-[13px] font-medium inline-flex items-center justify-center gap-2 hover:bg-black transition-colors"
-        >
-          <Shirt size={15} strokeWidth={1.75} />
-          Upload Custom Design
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
-          className="hidden"
-          onChange={(e) => {
-            void onUpload(e.target.files?.[0]);
-            e.target.value = "";
-          }}
-        />
+        {isTop && (
+          <>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="w-full h-11 rounded-full bg-[#111] text-white text-[13px] font-medium inline-flex items-center justify-center gap-2 hover:bg-black transition-colors"
+            >
+              <Shirt size={15} strokeWidth={1.75} />
+              Upload Custom Design
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={(e) => {
+                void onUpload(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </>
+        )}
 
         <div className="pt-1">
           {/* Garment Swatch & Prints */}
@@ -329,192 +341,194 @@ export function StudioConfigurator({
           </Accordion>
 
           {/* Logo transform & Placement controls */}
-          <Accordion
-            title="Logo Layout & Details"
-            open={openPanel === "logo"}
-            onToggle={() => togglePanel("logo")}
-          >
-            <div className="space-y-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.14em] text-black/45 mb-2">
-                  Decoration Method
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    key="decor-print"
-                    type="button"
-                    onClick={() => setDecorType("print")}
-                    className={`flex-1 rounded-full h-9 text-[11px] font-semibold border transition-all ${
-                      decorType === "print"
-                        ? "bg-[#111] text-white border-[#111] shadow-sm"
-                        : "bg-white border-black/10 text-black/70 hover:border-black/25"
-                    }`}
-                  >
-                    Print
-                  </button>
-                  <button
-                    key="decor-stitch"
-                    type="button"
-                    onClick={() => {
-                      setDecorType("stitch");
-                      if (designScale > 0.8) setDesignScale(0.8);
-                    }}
-                    className={`flex-1 rounded-full h-9 text-[11px] font-semibold border transition-all ${
-                      decorType === "stitch"
-                        ? "bg-[#111] text-white border-[#111] shadow-sm"
-                        : "bg-white border-black/10 text-black/70 hover:border-black/25"
-                    }`}
-                  >
-                    Block-out Stitch
-                  </button>
-                </div>
-                <p className="text-[9.5px] text-black/40 mt-2 leading-relaxed">
-                  {decorType === "stitch"
-                    ? "Block-out stitch is capped at 0.80 scale — physical embroidery hoop limits apply."
-                    : "Print (Screen/DTG) can scale up to 2.50 to fill the full torso width."}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.14em] text-black/45 mb-2">
-                  Logo placement
-                </p>
-                <div className="flex gap-1.5">
-                  {LOGO_PLACEMENTS.map((p) => (
+          {isTop && (
+            <Accordion
+              title="Logo Layout & Details"
+              open={openPanel === "logo"}
+              onToggle={() => togglePanel("logo")}
+            >
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-black/45 mb-2">
+                    Decoration Method
+                  </p>
+                  <div className="flex gap-2">
                     <button
-                      key={p.id}
+                      key="decor-print"
                       type="button"
-                      onClick={() => setPlacement(p.id)}
+                      onClick={() => setDecorType("print")}
                       className={`flex-1 rounded-full h-9 text-[11px] font-semibold border transition-all ${
-                        placement === p.id
+                        decorType === "print"
                           ? "bg-[#111] text-white border-[#111] shadow-sm"
                           : "bg-white border-black/10 text-black/70 hover:border-black/25"
                       }`}
                     >
-                      {p.id === "chest-left" ? "Left Chest" : p.id === "chest-center" ? "Center" : "Back"}
+                      Print
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.14em] text-black/45 mb-2">
-                  Preset Designs
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {LOGO_PRESETS.map((preset) => (
                     <button
-                      key={preset.id}
+                      key="decor-stitch"
                       type="button"
                       onClick={() => {
-                        setLogoId(preset.id);
-                        setCustomLogo(undefined);
+                        setDecorType("stitch");
+                        if (designScale > 0.8) setDesignScale(0.8);
                       }}
-                      className={`rounded-xl px-2 py-2.5 text-xs border transition-all ${
-                        logoId === preset.id && !customLogo
-                          ? "border-[#111] bg-[#111] text-white font-medium shadow-sm"
-                          : "border-black/5 bg-white/70 hover:border-black/20 text-black/60"
+                      className={`flex-1 rounded-full h-9 text-[11px] font-semibold border transition-all ${
+                        decorType === "stitch"
+                          ? "bg-[#111] text-white border-[#111] shadow-sm"
+                          : "bg-white border-black/10 text-black/70 hover:border-black/25"
                       }`}
                     >
-                      {preset.name}
+                      Block-out Stitch
                     </button>
-                  ))}
+                  </div>
+                  <p className="text-[9.5px] text-black/40 mt-2 leading-relaxed">
+                    {decorType === "stitch"
+                      ? "Block-out stitch is capped at 0.80 scale — physical embroidery hoop limits apply."
+                      : "Print (Screen/DTG) can scale up to 2.50 to fill the full torso width."}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-black/45 mb-2">
+                    Logo placement
+                  </p>
+                  <div className="flex gap-1.5">
+                    {LOGO_PLACEMENTS.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setPlacement(p.id)}
+                        className={`flex-1 rounded-full h-9 text-[11px] font-semibold border transition-all ${
+                          placement === p.id
+                            ? "bg-[#111] text-white border-[#111] shadow-sm"
+                            : "bg-white border-black/10 text-black/70 hover:border-black/25"
+                        }`}
+                      >
+                        {p.id === "chest-left" ? "Left Chest" : p.id === "chest-center" ? "Center" : "Back"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-black/45 mb-2">
+                    Preset Designs
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {LOGO_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          setLogoId(preset.id);
+                          setCustomLogo(undefined);
+                        }}
+                        className={`rounded-xl px-2 py-2.5 text-xs border transition-all ${
+                          logoId === preset.id && !customLogo
+                            ? "border-[#111] bg-[#111] text-white font-medium shadow-sm"
+                            : "border-black/5 bg-white/70 hover:border-black/20 text-black/60"
+                        }`}
+                      >
+                        {preset.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t border-black/5 pt-3.5 space-y-3">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-black/45">
+                    Position & Size
+                  </p>
+                  
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-black/55">
+                      <span>Design scale</span>
+                      <span>{designScale.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.2}
+                      max={decorType === "stitch" ? 0.8 : 2.5}
+                      step={0.05}
+                      value={designScale}
+                      onChange={(e) => setDesignScale(Number(e.target.value))}
+                      className="w-full accent-[#5b6cff]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-black/55">
+                      <span>Position X</span>
+                      <span>{designX.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-0.5}
+                      max={0.5}
+                      step={0.01}
+                      value={designX}
+                      onChange={(e) => setDesignX(Number(e.target.value))}
+                      className="w-full accent-[#5b6cff]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-black/55">
+                      <span>Position Y</span>
+                      <span>{designY.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-0.5}
+                      max={0.5}
+                      step={0.01}
+                      value={designY}
+                      onChange={(e) => setDesignY(Number(e.target.value))}
+                      className="w-full accent-[#5b6cff]"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-black/5 pt-3.5 space-y-3">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-black/45">
+                    Fabric Effects
+                  </p>
+                  
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-black/55">
+                      <span>Acid wash</span>
+                      <span>{acidWash.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.0}
+                      max={1.0}
+                      step={0.01}
+                      value={acidWash}
+                      onChange={(e) => setAcidWash(Number(e.target.value))}
+                      className="w-full accent-[#5b6cff]"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-black/55">
+                      <span>Puff print height</span>
+                      <span>{puffPrint.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.0}
+                      max={1.0}
+                      step={0.01}
+                      value={puffPrint}
+                      onChange={(e) => setPuffPrint(Number(e.target.value))}
+                      className="w-full accent-[#5b6cff]"
+                    />
+                  </div>
                 </div>
               </div>
-
-              <div className="border-t border-black/5 pt-3.5 space-y-3">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-black/45">
-                  Position & Size
-                </p>
-                
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-black/55">
-                    <span>Design scale</span>
-                    <span>{designScale.toFixed(2)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.2}
-                    max={decorType === "stitch" ? 0.8 : 2.5}
-                    step={0.05}
-                    value={designScale}
-                    onChange={(e) => setDesignScale(Number(e.target.value))}
-                    className="w-full accent-[#5b6cff]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-black/55">
-                    <span>Position X</span>
-                    <span>{designX.toFixed(2)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={-0.5}
-                    max={0.5}
-                    step={0.01}
-                    value={designX}
-                    onChange={(e) => setDesignX(Number(e.target.value))}
-                    className="w-full accent-[#5b6cff]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-black/55">
-                    <span>Position Y</span>
-                    <span>{designY.toFixed(2)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={-0.5}
-                    max={0.5}
-                    step={0.01}
-                    value={designY}
-                    onChange={(e) => setDesignY(Number(e.target.value))}
-                    className="w-full accent-[#5b6cff]"
-                  />
-                </div>
-              </div>
-
-              <div className="border-t border-black/5 pt-3.5 space-y-3">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-black/45">
-                  Fabric Effects
-                </p>
-                
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-black/55">
-                    <span>Acid wash</span>
-                    <span>{acidWash.toFixed(2)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.0}
-                    max={1.0}
-                    step={0.01}
-                    value={acidWash}
-                    onChange={(e) => setAcidWash(Number(e.target.value))}
-                    className="w-full accent-[#5b6cff]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] text-black/55">
-                    <span>Puff print height</span>
-                    <span>{puffPrint.toFixed(2)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.0}
-                    max={1.0}
-                    step={0.01}
-                    value={puffPrint}
-                    onChange={(e) => setPuffPrint(Number(e.target.value))}
-                    className="w-full accent-[#5b6cff]"
-                  />
-                </div>
-              </div>
-            </div>
-          </Accordion>
+            </Accordion>
+          )}
 
           {/* Buy Action accordion */}
           <Accordion
@@ -680,6 +694,7 @@ export function StudioConfigurator({
 
         <Tee3DViewer
           ref={viewerRef}
+          modelSlug={modelSlug}
           color={color.hex}
           logoLabel={logoLabel ?? "brand"}
           logoDataUrl={customLogo}
