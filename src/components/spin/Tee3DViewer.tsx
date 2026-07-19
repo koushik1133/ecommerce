@@ -749,6 +749,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           uniform vec3 uLogoColor;
           uniform bool uDyeLogo;
           uniform int uPlacement;
+          varying vec3 vObjPos;
           \n` + shader.fragmentShader;
 
         shader.fragmentShader = shader.fragmentShader.replace(
@@ -771,7 +772,17 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           vec4 washColor = texture2D(uAcidWashTex, vMapUv * 2.0);
           diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * washColor.rgb * 1.5, uAcidWashIntensity);
 
-          if (uDesignEnabled && gl_FrontFacing) {
+          bool isFrontPlacement = (uPlacement == 0 || uPlacement == 1);
+          bool isBackPlacement = (uPlacement == 2);
+          bool isValidExteriorSurface = false;
+
+          if (isFrontPlacement && vObjPos.z > 0.0) {
+            isValidExteriorSurface = true;
+          } else if (isBackPlacement && vObjPos.z < 0.0) {
+            isValidExteriorSurface = true;
+          }
+
+          if (uDesignEnabled && gl_FrontFacing && isValidExteriorSurface) {
             float bodyXMin = 0.02;
             float bodyXMax = 0.48;
             float bodyYMin = 0.30;
@@ -843,7 +854,16 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         shader.vertexShader =
           `
           uniform float uPuffPrintHeight;
+          varying vec3 vObjPos;
           \n` + shader.vertexShader;
+
+        shader.vertexShader = shader.vertexShader.replace(
+          "#include <begin_vertex>",
+          `
+          #include <begin_vertex>
+          vObjPos = position;
+          `
+        );
 
         material.userData.shader = shader;
       };
