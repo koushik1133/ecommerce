@@ -708,8 +708,8 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         normalMap: normalFabricRef.current,
         normalScale: new THREE.Vector2(0.08, 0.08),
         side: THREE.DoubleSide,
-        depthWrite: isOutside ? false : true,
-        transparent: isOutside ? true : false,
+        depthWrite: true,
+        transparent: false,
         alphaTest: 0,
       });
 
