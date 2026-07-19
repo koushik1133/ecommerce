@@ -24,6 +24,7 @@ const BLANK: FormProduct = {
   badges: [],
   category: "essentials",
   viewer: "auto",
+  backgroundMode: undefined,
 };
 
 type Props = {
@@ -178,9 +179,8 @@ export function ProductForm({ initial = BLANK, onSave, saving = false, title }: 
             </div>
           </Section>
 
-          {/* Category & Fit */}
           <Section title="Category & Fit">
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-4 gap-4">
               <Field label="Category">
                 <select
                   value={form.category}
@@ -207,6 +207,18 @@ export function ProductForm({ initial = BLANK, onSave, saving = false, title }: 
                   className={inputCls()}
                   placeholder="Regular"
                 />
+              </Field>
+              <Field label="Studio Background Mode">
+                <select
+                  value={form.backgroundMode || "auto"}
+                  onChange={(e) => set("backgroundMode", e.target.value === "auto" ? undefined : e.target.value as FormProduct["backgroundMode"])}
+                  className={inputCls()}
+                >
+                  <option value="auto">Auto (Contrast-based)</option>
+                  <option value="light">Light (White/Grey)</option>
+                  <option value="dark">Dark (Black)</option>
+                  <option value="darken">Darken (Black)</option>
+                </select>
               </Field>
             </div>
           </Section>

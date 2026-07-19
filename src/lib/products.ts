@@ -27,6 +27,7 @@ export type Product = {
   /** Prefer photos | 360 | 3d */
   viewer?: "photos" | "spin" | "3d" | "auto";
   priority?: number;
+  backgroundMode?: "light" | "dark" | "darken";
 };
 
 export const SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;

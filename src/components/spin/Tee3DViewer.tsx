@@ -20,6 +20,12 @@ export type Tee3DViewerHandle = {
   exportVideo?: (onProgress: (p: number) => void, onComplete: () => void) => void;
 };
 
+function getPlacementCode(placement: string): number {
+  if (placement === "chest-left") return 0;
+  if (placement === "back") return 2;
+  return 1; // chest-center
+}
+
 type Tee3DViewerProps = {
   color: string;
   sleevesColor?: string;
@@ -44,6 +50,9 @@ type Tee3DViewerProps = {
   cameraAnim?: "none" | "rotate" | "orbit-zoom";
   renderQuality?: "fast" | "high";
   frameSize?: "auto" | "portrait";
+  // Logo customization props
+  logoColor?: string;
+  dyeLogo?: boolean;
 };
 
 export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
@@ -71,6 +80,8 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       cameraAnim = "none",
       renderQuality = "fast",
       frameSize = "auto",
+      logoColor = "#ffffff",
+      dyeLogo = false,
     },
     ref
   ) {
@@ -103,8 +114,8 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
     // Active state container ref to allow access inside render loop
     const stateRef = useRef({
       color,
-      sleevesColor,
-      collarColor,
+      sleevesColor: color,
+      collarColor: color,
       background,
       acidWash,
       puffPrint,
@@ -118,14 +129,17 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       frameSize,
       autoRotate,
       rotateSpeed,
+      logoColor,
+      dyeLogo,
+      placement,
     });
 
     // Update mutable state ref when props change
     useEffect(() => {
       stateRef.current = {
         color,
-        sleevesColor,
-        collarColor,
+        sleevesColor: color,
+        collarColor: color,
         background,
         acidWash,
         puffPrint,
@@ -139,18 +153,20 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         frameSize,
         autoRotate,
         rotateSpeed,
+        logoColor,
+        dyeLogo,
+        placement,
       };
 
-      // Apply immediate modifications to stateful components
-      if (sceneRef.current) {
-        sceneRef.current.background = new THREE.Color(background);
-      }
       updateGarmentColors();
       updateUniform("uAcidWashIntensity", acidWash);
       updateUniform("uPuffPrintHeight", puffPrint);
       updateUniform("uDesignScale", designScale);
       updateUniform("uDesignX", designX);
       updateUniform("uDesignY", designY);
+      updateUniform("uLogoColor", new THREE.Color(logoColor));
+      updateUniform("uDyeLogo", dyeLogo);
+      updateUniform("uPlacement", getPlacementCode(placement));
 
       if (controlsRef.current) {
         controlsRef.current.autoRotate = autoRotate || cameraAnim !== "none";
@@ -168,8 +184,6 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       }
     }, [
       color,
-      sleevesColor,
-      collarColor,
       background,
       acidWash,
       puffPrint,
@@ -183,6 +197,9 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       frameSize,
       autoRotate,
       rotateSpeed,
+      logoColor,
+      dyeLogo,
+      placement,
     ]);
 
     // Handle design texture upload changes
@@ -257,7 +274,6 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
 
       // 1. Init Engine
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(stateRef.current.background);
       sceneRef.current = scene;
 
       const camera = new THREE.PerspectiveCamera(
@@ -462,59 +478,15 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         const delta = clock.getDelta();
         const time = clock.getElapsedTime();
 
-        if (mixerRef.current) {
-          mixerRef.current.update(delta * stateRef.current.motionSpeed);
-        }
-
         if (tshirtGroupRef.current) {
           const group = tshirtGroupRef.current;
           const meshes = tshirtMeshesRef.current;
-          const activeMotion = stateRef.current.motion;
-          const speed = stateRef.current.motionSpeed;
-
-          if (activeMotion === "walk") {
-            const sway = speed * 4.0;
-            group.position.y = -0.45 + Math.sin(time * sway) * 0.05;
-            group.rotation.y = Math.PI + Math.sin(time * (sway * 0.5)) * 0.08;
-            group.rotation.z = Math.cos(time * (sway * 0.5)) * 0.03;
-            meshes.forEach((m) => m.position.set(0, 0, 0));
-          } else if (activeMotion === "waves") {
-            const waveSpeed = time * speed * 8.0;
-            meshes.forEach((mesh) => {
-              mesh.rotation.y = 0;
-              mesh.rotation.z = 0;
-              mesh.position.z = Math.sin(waveSpeed + mesh.id) * 0.02;
-              mesh.position.y = Math.cos(waveSpeed * 0.7 + mesh.id) * 0.01;
-            });
-            group.position.y = -0.45;
-            group.rotation.set(0, Math.PI, 0);
-          } else if (activeMotion === "knit") {
-            group.position.set(0, -0.45, 0);
-            group.rotation.set(0, Math.PI, 0);
-            meshes.forEach((m) => m.position.set(0, 0, 0));
-
-            const targetZoom = 3.3;
-            if (cameraRef.current) {
-              cameraRef.current.position.z = THREE.MathUtils.lerp(
-                cameraRef.current.position.z,
-                targetZoom,
-                0.05
-              );
-            }
-            controlsRef.current?.target.set(0, 0.2, 0);
-          } else {
-            // Static mode
-            group.position.y = -0.45;
-            group.rotation.set(0, Math.PI, 0);
-            meshes.forEach((m) => m.position.set(0, 0, 0));
-          }
-        }
-
-        // Camera Autoplay Zoom Orbit Pulse
-        if (stateRef.current.cameraAnim === "orbit-zoom" && cameraRef.current) {
-          const dist = 6.8 + Math.sin(time * 0.5) * 1.3;
-          const targetPos = cameraRef.current.position.clone().normalize().multiplyScalar(dist);
-          cameraRef.current.position.lerp(targetPos, 0.02);
+          
+          group.position.y = -0.45;
+          group.rotation.set(0, Math.PI, 0);
+          meshes.forEach((m) => {
+            m.position.set(0, 0, 0);
+          });
         }
 
         controlsRef.current?.update();
@@ -577,8 +549,8 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
 
       material.onBeforeCompile = (shader) => {
         shader.uniforms.uGarmentColor = { value: new THREE.Color(stateRef.current.color) };
-        shader.uniforms.uSleevesColor = { value: new THREE.Color(stateRef.current.sleevesColor) };
-        shader.uniforms.uCollarColor = { value: new THREE.Color(stateRef.current.collarColor) };
+        shader.uniforms.uSleevesColor = { value: new THREE.Color(stateRef.current.color) };
+        shader.uniforms.uCollarColor = { value: new THREE.Color(stateRef.current.color) };
         shader.uniforms.uOutsideAoTex = { value: defaultOutsideAORef.current };
         shader.uniforms.uInsideAoTex = { value: defaultInsideAORef.current };
         shader.uniforms.uAcidWashTex = { value: acidWashTextureRef.current };
@@ -590,6 +562,9 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         shader.uniforms.uDesignScale = { value: stateRef.current.designScale };
         shader.uniforms.uDesignX = { value: stateRef.current.designX };
         shader.uniforms.uDesignY = { value: stateRef.current.designY };
+        shader.uniforms.uLogoColor = { value: new THREE.Color(stateRef.current.logoColor) };
+        shader.uniforms.uDyeLogo = { value: stateRef.current.dyeLogo };
+        shader.uniforms.uPlacement = { value: getPlacementCode(stateRef.current.placement) };
 
         shader.fragmentShader =
           `
@@ -605,6 +580,9 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           uniform float uDesignScale;
           uniform float uDesignX;
           uniform float uDesignY;
+          uniform vec3 uLogoColor;
+          uniform bool uDyeLogo;
+          uniform int uPlacement;
           \n` + shader.fragmentShader;
 
         shader.fragmentShader = shader.fragmentShader.replace(
@@ -633,6 +611,18 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
             float bodyYMin = 0.30;
             float bodyYMax = 0.82;
 
+            if (uPlacement == 0) {
+              bodyXMin = 0.04;
+              bodyXMax = 0.28;
+              bodyYMin = 0.45;
+              bodyYMax = 0.78;
+            } else if (uPlacement == 2) {
+              bodyXMin = 0.52;
+              bodyXMax = 0.98;
+              bodyYMin = 0.30;
+              bodyYMax = 0.82;
+            }
+
             if (vMapUv.x >= bodyXMin && vMapUv.x <= bodyXMax &&
                 vMapUv.y >= bodyYMin && vMapUv.y <= bodyYMax) {
 
@@ -648,6 +638,14 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
               float cx = 0.50 + uDesignX;
               float cy = 0.70 + uDesignY;
 
+              if (uPlacement == 0) {
+                cx = 0.50 + uDesignX;
+                cy = 0.50 + uDesignY;
+              } else if (uPlacement == 2) {
+                cx = 0.50 + uDesignX;
+                cy = 0.65 + uDesignY;
+              }
+
               float uMin = cx - w * 0.5;
               float uMax = cx + w * 0.5;
               float vMin = cy - h * 0.5;
@@ -659,8 +657,15 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
                   (bodyUv.x - uMin) / w,
                   (bodyUv.y - vMin) / h
                 );
+                if (uPlacement == 2) {
+                  projectedUv.x = 1.0 - projectedUv.x;
+                }
                 vec4 designColor = texture2D(uDesignTex, projectedUv);
-                diffuseColor.rgb = mix(diffuseColor.rgb, designColor.rgb, designColor.a);
+                vec3 finalDesignRgb = designColor.rgb;
+                if (uDyeLogo) {
+                  finalDesignRgb = uLogoColor * designColor.a;
+                }
+                diffuseColor.rgb = mix(diffuseColor.rgb, finalDesignRgb, designColor.a);
               }
             }
           }
