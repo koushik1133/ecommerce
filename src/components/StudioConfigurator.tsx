@@ -107,6 +107,10 @@ export function StudioConfigurator({
   const [logoColor, setLogoColor] = useState("#ffffff");
   const [dyeLogo, setDyeLogo] = useState(false);
 
+  // Decoration & Interaction States
+  const [decorType, setDecorType] = useState<"print" | "stitch">("print");
+  const [interactMode, setInteractMode] = useState<"orbit" | "drag-logo">("orbit");
+
   // Output settings
   const [frameSize, setFrameSize] = useState<"auto" | "portrait">("auto");
   const [renderQuality, setRenderQuality] = useState<"fast" | "high">("fast");
@@ -332,6 +336,46 @@ export function StudioConfigurator({
             <div className="space-y-4">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.14em] text-black/45 mb-2">
+                  Decoration Method
+                </p>
+                <div className="flex gap-1.5">
+                  <button
+                    key="decor-print"
+                    type="button"
+                    onClick={() => setDecorType("print")}
+                    className={`flex-1 rounded-full h-8 text-[10px] font-semibold border transition-colors ${
+                      decorType === "print"
+                        ? "bg-[#111] text-white border-[#111]"
+                        : "bg-white border-black/10 text-black/70 hover:border-black/20"
+                    }`}
+                  >
+                    Print (Screen/DTG)
+                  </button>
+                  <button
+                    key="decor-stitch"
+                    type="button"
+                    onClick={() => {
+                      setDecorType("stitch");
+                      if (designScale > 0.8) setDesignScale(0.8);
+                    }}
+                    className={`flex-1 rounded-full h-8 text-[10px] font-semibold border transition-colors ${
+                      decorType === "stitch"
+                        ? "bg-[#111] text-white border-[#111]"
+                        : "bg-white border-black/10 text-black/70 hover:border-black/20"
+                    }`}
+                  >
+                    Stitch (Embroidery)
+                  </button>
+                </div>
+                <p className="text-[9.5px] text-black/45 mt-1.5 leading-relaxed">
+                  {decorType === "stitch"
+                    ? "Stitched designs are constrained to a maximum scale of 0.80 for physical frame limitations."
+                    : "Printed graphics can be stretched up to 2.50 to cover the full width of the shirt."}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] text-black/45 mb-2">
                   Logo placement
                 </p>
                 <div className="flex gap-1">
@@ -390,7 +434,7 @@ export function StudioConfigurator({
                   <input
                     type="range"
                     min={0.2}
-                    max={2.5}
+                    max={decorType === "stitch" ? 0.8 : 2.5}
                     step={0.05}
                     value={designScale}
                     onChange={(e) => setDesignScale(Number(e.target.value))}
@@ -680,14 +724,43 @@ export function StudioConfigurator({
           designY={designY}
           logoColor={logoColor}
           dyeLogo={dyeLogo}
+          interactMode={interactMode}
+          onDesignPositionChange={(x, y) => {
+            setDesignX(x);
+            setDesignY(y);
+          }}
           className="absolute inset-0 h-full w-full min-h-0 rounded-none bg-transparent"
         />
 
-        <div className="absolute top-3 left-3 z-10 pointer-events-none">
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/90 border border-black/8 px-2.5 py-1 text-[9px] tracking-[0.16em] uppercase text-black/55 shadow-sm">
+        <div className="absolute top-3 left-3 z-10 flex gap-1.5 pointer-events-auto">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/95 border border-black/8 px-2.5 py-1 text-[9px] tracking-[0.16em] uppercase text-black/55 shadow-sm pointer-events-none">
             <Expand size={10} />
             360° Studio
           </span>
+          <div className="inline-flex rounded-full bg-white/95 border border-black/8 p-0.5 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setInteractMode("orbit")}
+              className={`rounded-full px-2.5 py-0.5 text-[9px] font-semibold transition-all ${
+                interactMode === "orbit"
+                  ? "bg-[#111] text-white shadow-sm"
+                  : "text-black/55 hover:text-[#111]"
+              }`}
+            >
+              Rotate Tee
+            </button>
+            <button
+              type="button"
+              onClick={() => setInteractMode("drag-logo")}
+              className={`rounded-full px-2.5 py-0.5 text-[9px] font-semibold transition-all ${
+                interactMode === "drag-logo"
+                  ? "bg-[#111] text-white shadow-sm"
+                  : "text-black/55 hover:text-[#111]"
+              }`}
+            >
+              Drag Logo
+            </button>
+          </div>
         </div>
       </div>
     </div>

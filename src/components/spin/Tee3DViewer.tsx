@@ -53,6 +53,9 @@ type Tee3DViewerProps = {
   // Logo customization props
   logoColor?: string;
   dyeLogo?: boolean;
+  // Interaction & Drag Placement Props
+  interactMode?: "orbit" | "drag-logo";
+  onDesignPositionChange?: (x: number, y: number) => void;
 };
 
 export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
@@ -82,6 +85,8 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       frameSize = "auto",
       logoColor = "#ffffff",
       dyeLogo = false,
+      interactMode = "orbit",
+      onDesignPositionChange,
     },
     ref
   ) {
@@ -132,6 +137,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       logoColor,
       dyeLogo,
       placement,
+      interactMode,
     });
 
     // Update mutable state ref when props change
@@ -156,6 +162,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
         logoColor,
         dyeLogo,
         placement,
+        interactMode,
       };
 
       updateGarmentColors();
@@ -169,7 +176,8 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       updateUniform("uPlacement", getPlacementCode(placement));
 
       if (controlsRef.current) {
-        controlsRef.current.autoRotate = autoRotate || cameraAnim !== "none";
+        controlsRef.current.enabled = interactMode === "orbit";
+        controlsRef.current.autoRotate = (autoRotate || cameraAnim !== "none") && interactMode === "orbit";
         controlsRef.current.autoRotateSpeed =
           cameraAnim === "rotate"
             ? motionSpeed * 4.0
@@ -468,6 +476,94 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       };
       window.addEventListener("resize", handleResize);
 
+      // 5b. Setup Pointer Interaction handlers for direct drag placement
+      const canvasEl = canvasRef.current;
+      const isDraggingRef = { current: false };
+
+      const updatePositionFromEvent = (e: PointerEvent) => {
+        if (!containerRef.current || !cameraRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(x, y), cameraRef.current);
+
+        const intersects = raycaster.intersectObjects(tshirtMeshesRef.current, true);
+        if (intersects.length > 0) {
+          const hit = intersects[0];
+          if (hit.uv) {
+            const uv = hit.uv;
+            const currentPlacement = stateRef.current.placement;
+
+            let bodyXMin = 0.02;
+            let bodyXMax = 0.48;
+            let bodyYMin = 0.30;
+            let bodyYMax = 0.82;
+            let defaultCx = 0.50;
+            let defaultCy = 0.70;
+
+            if (currentPlacement === "chest-left") {
+              bodyXMin = 0.04;
+              bodyXMax = 0.28;
+              bodyYMin = 0.45;
+              bodyYMax = 0.78;
+              defaultCx = 0.50;
+              defaultCy = 0.50;
+            } else if (currentPlacement === "back") {
+              bodyXMin = 0.52;
+              bodyXMax = 0.98;
+              bodyYMin = 0.30;
+              bodyYMax = 0.82;
+              defaultCx = 0.50;
+              defaultCy = 0.65;
+            }
+
+            const clampedUvX = Math.max(bodyXMin, Math.min(bodyXMax, uv.x));
+            const clampedUvY = Math.max(bodyYMin, Math.min(bodyYMax, uv.y));
+
+            const bodyUvX = (clampedUvX - bodyXMin) / (bodyXMax - bodyXMin);
+            const bodyUvY = (clampedUvY - bodyYMin) / (bodyYMax - bodyYMin);
+
+            const finalBodyUvX = currentPlacement === "back" ? 1.0 - bodyUvX : bodyUvX;
+
+            const dx = finalBodyUvX - defaultCx;
+            const dy = bodyUvY - defaultCy;
+
+            const finalDx = Math.max(-0.5, Math.min(0.5, dx));
+            const finalDy = Math.max(-0.5, Math.min(0.5, dy));
+
+            onDesignPositionChange?.(finalDx, finalDy);
+          }
+        }
+      };
+
+      const handlePointerDown = (e: PointerEvent) => {
+        if (stateRef.current.interactMode !== "drag-logo") return;
+        isDraggingRef.current = true;
+        canvasEl?.setPointerCapture(e.pointerId);
+        updatePositionFromEvent(e);
+      };
+
+      const handlePointerMove = (e: PointerEvent) => {
+        if (!isDraggingRef.current) return;
+        updatePositionFromEvent(e);
+      };
+
+      const handlePointerUp = (e: PointerEvent) => {
+        isDraggingRef.current = false;
+        try {
+          canvasEl?.releasePointerCapture(e.pointerId);
+        } catch {}
+      };
+
+      if (canvasEl) {
+        canvasEl.addEventListener("pointerdown", handlePointerDown);
+        canvasEl.addEventListener("pointermove", handlePointerMove);
+        canvasEl.addEventListener("pointerup", handlePointerUp);
+        canvasEl.addEventListener("pointercancel", handlePointerUp);
+      }
+
       // 6. Animation Render Loop
       const clock = new THREE.Clock();
       clockRef.current = clock;
@@ -496,6 +592,12 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
 
       return () => {
         window.removeEventListener("resize", handleResize);
+        if (canvasEl) {
+          canvasEl.removeEventListener("pointerdown", handlePointerDown);
+          canvasEl.removeEventListener("pointermove", handlePointerMove);
+          canvasEl.removeEventListener("pointerup", handlePointerUp);
+          canvasEl.removeEventListener("pointercancel", handlePointerUp);
+        }
         if (animationFrameIdRef.current) {
           cancelAnimationFrame(animationFrameIdRef.current);
         }
