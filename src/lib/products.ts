@@ -26,6 +26,7 @@ export type Product = {
   gallery?: { src: string; label: string }[];
   /** Prefer photos | 360 | 3d */
   viewer?: "photos" | "spin" | "3d" | "auto";
+  priority?: number;
 };
 
 export const SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
@@ -90,6 +91,7 @@ export const products: Product[] = [
     badges: ["New drop"],
     category: "premium",
     viewer: "photos",
+    priority: 1,
     gallery: [
       { src: "/products/studio-tee/gallery/front-clean.jpg", label: "Front" },
       { src: "/products/studio-tee/gallery/back-clean.jpg", label: "Back" },
@@ -139,6 +141,7 @@ export const products: Product[] = [
     ],
     badges: ["Bestseller"],
     category: "essentials",
+    priority: 2,
   },
   {
     id: "2",
@@ -166,6 +169,7 @@ export const products: Product[] = [
     ],
     badges: ["New"],
     category: "premium",
+    priority: 3,
   },
   {
     id: "3",
@@ -191,6 +195,7 @@ export const products: Product[] = [
       "Easy returns within 7 days",
     ],
     category: "essentials",
+    priority: 4,
   },
   {
     id: "4",
@@ -217,6 +222,7 @@ export const products: Product[] = [
     ],
     badges: ["Limited"],
     category: "graphics",
+    priority: 5,
   },
   {
     id: "5",
@@ -244,6 +250,7 @@ export const products: Product[] = [
     badges: ["Customizable"],
     category: "premium",
     viewer: "3d",
+    priority: 6,
   },
   {
     id: "6",
@@ -270,6 +277,7 @@ export const products: Product[] = [
     ],
     comingSoon: true,
     category: "essentials",
+    priority: 7,
   },
 ];
 

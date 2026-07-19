@@ -32,9 +32,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
   const [customLogo, setCustomLogo] = useState<string | undefined>();
   const [background, setBackground] = useState<StudioBackground>(STUDIO_BACKGROUNDS[0]);
   const [customBg, setCustomBg] = useState<string | undefined>();
-  const [viewMode, setViewMode] = useState<"photos" | "3d">(() =>
-    product.gallery && product.gallery.length > 0 ? "photos" : "3d"
-  );
+  const [viewMode, setViewMode] = useState<"photos" | "3d">("photos");
   const [added, setAdded] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -44,7 +42,15 @@ export function ProductConfigurator({ product }: { product: Product }) {
   const logo = LOGO_PRESETS.find((l) => l.id === logoId) ?? LOGO_PRESETS[0];
   const logoLabel = customLogo ? undefined : logo.label;
   const disabled = Boolean(product.comingSoon);
-  const gallery = product.gallery ?? [];
+  const gallery =
+    product.gallery && product.gallery.length > 0
+      ? product.gallery
+      : [
+          { src: "mock-front", label: "Front" },
+          { src: "mock-back", label: "Back" },
+          { src: "mock-left", label: "Left side" },
+          { src: "mock-right", label: "Right side" },
+        ];
 
   async function onUpload(file: File | undefined) {
     if (!file) return;
@@ -137,7 +143,13 @@ export function ProductConfigurator({ product }: { product: Product }) {
         </div>
 
         {viewMode === "photos" && gallery.length > 0 ? (
-          <PhotoGallery images={gallery} />
+          <PhotoGallery
+            images={gallery}
+            color={color.hex}
+            logoLabel={logoLabel}
+            logoDataUrl={customLogo}
+            placement={placement}
+          />
         ) : (
           <div className="overflow-hidden rounded-2xl border border-line bg-surface">
             <Tee3DViewer

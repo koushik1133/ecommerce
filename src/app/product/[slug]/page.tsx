@@ -1,33 +1,31 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+"use client";
+
+import { useParams, notFound } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ProductConfigurator } from "@/components/ProductConfigurator";
 import { ProductCard } from "@/components/ProductCard";
-import { getProduct, products } from "@/lib/products";
+import { useAdminProducts } from "@/store/admin";
 
-type Params = Promise<{ slug: string }>;
+export default function ProductPage() {
+  const [mounted, setMounted] = useState(false);
+  const params = useParams();
+  const slug = params.slug as string;
+  const products = useAdminProducts((s) => s.products);
 
-export async function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }));
-}
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Params;
-}): Promise<Metadata> {
-  const { slug } = await params;
-  const product = getProduct(slug);
-  if (!product) return { title: "Product" };
-  return {
-    title: product.name,
-    description: product.description,
-  };
-}
+  if (!mounted) {
+    return (
+      <div className="container-brand py-8 md:py-14 min-h-[50vh] flex items-center justify-center">
+        <p className="text-sm font-medium tracking-widest uppercase animate-pulse">Loading product...</p>
+      </div>
+    );
+  }
 
-export default async function ProductPage({ params }: { params: Params }) {
-  const { slug } = await params;
-  const product = getProduct(slug);
+  const product = products.find((p) => p.slug === slug);
   if (!product) notFound();
 
   const related = products

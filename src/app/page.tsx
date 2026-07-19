@@ -1,15 +1,36 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { ProductCard } from "@/components/ProductCard";
 import { TeeMockup } from "@/components/TeeMockup";
-import { products } from "@/lib/products";
+import { useAdminProducts } from "@/store/admin";
 
 export default function HomePage() {
-  const featured = [
-    products.find((p) => p.slug === "studio-tee"),
-    ...products.filter((p) => !p.comingSoon && p.slug !== "studio-tee"),
-  ]
-    .filter(Boolean)
-    .slice(0, 4) as typeof products;
+  const [mounted, setMounted] = useState(false);
+  const products = useAdminProducts((s) => s.products);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-[88vh] flex items-center justify-center bg-ink text-white">
+        <p className="text-sm font-medium tracking-widest uppercase animate-pulse">Loading brand...</p>
+      </div>
+    );
+  }
+
+  // Sort products by priority (ascending)
+  const sortedProducts = [...products].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+
+  const featured = (
+    [
+      sortedProducts.find((p) => p.slug === "studio-tee"),
+      ...sortedProducts.filter((p) => !p.comingSoon && p.slug !== "studio-tee"),
+    ].filter(Boolean) as typeof products
+  ).slice(0, 4);
 
   return (
     <>

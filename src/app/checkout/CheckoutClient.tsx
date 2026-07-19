@@ -10,6 +10,8 @@ import {
 } from "@/lib/products";
 import { Check } from "lucide-react";
 
+import { useAdminOrders, useAdminCustomers, useAdminSettings } from "@/store/admin";
+
 const INDIAN_STATES = [
   "Andhra Pradesh",
   "Delhi",
@@ -30,12 +32,22 @@ const INDIAN_STATES = [
 
 export default function CheckoutClient() {
   const { items, subtotal, clearCart } = useCart();
+  const { addOrder } = useAdminOrders();
+  const { addCustomer } = useAdminCustomers();
+  const { settings } = useAdminSettings();
   const [mounted, setMounted] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [payment, setPayment] = useState<"cod" | "upi" | "card">("cod");
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    // Set default payment based on what's enabled
+    if (!settings.codEnabled) {
+      if (settings.upiEnabled) setPayment("upi");
+      else if (settings.cardEnabled) setPayment("card");
+    }
+  }, [settings]);
 
   if (!mounted) {
     return (
@@ -46,13 +58,69 @@ export default function CheckoutClient() {
   }
 
   const total = subtotal();
-  const shipping = total === 0 ? 0 : total >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FLAT;
+  const shipping = total === 0 ? 0 : total >= settings.freeShippingThreshold ? 0 : settings.shippingFlat;
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (items.length === 0) return;
-    const id = `BR-${Date.now().toString().slice(-8)}`;
-    setOrderId(id);
+
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
+    const address = `${formData.get("address1")} ${formData.get("address2") || ""}`.trim();
+    const city = formData.get("city") as string;
+    const pincode = formData.get("pincode") as string;
+    const state = formData.get("state") as string;
+
+    const ordNum = 10001 + useAdminOrders.getState().orders.length;
+    const id = `ord-${Date.now().toString().slice(-4)}`;
+
+    const newOrder = {
+      id,
+      orderNumber: `#${ordNum}`,
+      customer: name,
+      email,
+      phone,
+      items: items.map((item) => ({
+        productId: item.productId,
+        name: item.name,
+        color: item.color,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      subtotal: total,
+      shipping,
+      total: total + shipping,
+      status: "pending" as const,
+      payment,
+      address,
+      city,
+      state,
+      pincode,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const newCustomer = {
+      id: `cus-${Date.now().toString().slice(-4)}`,
+      name,
+      email,
+      phone,
+      city,
+      state,
+      totalOrders: 1,
+      totalSpend: total + shipping,
+      lastOrderAt: new Date().toISOString(),
+      tags: ["New"],
+      joinedAt: new Date().toISOString(),
+    };
+
+    addOrder(newOrder);
+    addCustomer(newCustomer);
+
+    setOrderId(newOrder.orderNumber);
     setPlaced(true);
     clearCart();
   }
@@ -148,32 +216,32 @@ export default function CheckoutClient() {
           <section>
             <h2 className="font-display text-xl font-semibold mb-5">Payment</h2>
             <div className="space-y-3">
-              {(
-                [
-                  { id: "cod", label: "Cash on Delivery", hint: "Pay when your order arrives" },
-                  { id: "upi", label: "UPI", hint: "GPay, PhonePe, Paytm & more" },
-                  { id: "card", label: "Card", hint: "Visa, Mastercard, RuPay" },
-                ] as const
-              ).map((opt) => (
-                <label
-                  key={opt.id}
-                  className={`flex items-start gap-3 border p-4 cursor-pointer transition-colors ${
-                    payment === opt.id ? "border-ink bg-surface" : "border-line"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="payment"
-                    className="mt-1 accent-[var(--accent)]"
-                    checked={payment === opt.id}
-                    onChange={() => setPayment(opt.id)}
-                  />
-                  <span>
-                    <span className="block text-sm font-medium">{opt.label}</span>
-                    <span className="block text-xs text-muted mt-0.5">{opt.hint}</span>
-                  </span>
-                </label>
-              ))}
+              {[
+                settings.codEnabled && { id: "cod", label: "Cash on Delivery", hint: "Pay when your order arrives" },
+                settings.upiEnabled && { id: "upi", label: "UPI", hint: "GPay, PhonePe, Paytm & more" },
+                settings.cardEnabled && { id: "card", label: "Card", hint: "Visa, Mastercard, RuPay" },
+              ]
+                .filter(Boolean)
+                .map((opt: any) => (
+                  <label
+                    key={opt.id}
+                    className={`flex items-start gap-3 border p-4 cursor-pointer transition-colors ${
+                      payment === opt.id ? "border-ink bg-surface" : "border-line"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment"
+                      className="mt-1 accent-[var(--accent)]"
+                      checked={payment === opt.id}
+                      onChange={() => setPayment(opt.id)}
+                    />
+                    <span>
+                      <span className="block text-sm font-medium">{opt.label}</span>
+                      <span className="block text-xs text-muted mt-0.5">{opt.hint}</span>
+                    </span>
+                  </label>
+                ))}
             </div>
             {payment !== "cod" && (
               <p className="mt-3 text-xs text-muted">

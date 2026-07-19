@@ -1,26 +1,36 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 import { ProductCard } from "@/components/ProductCard";
-import { products } from "@/lib/products";
+import { useAdminProducts } from "@/store/admin";
 import { ShopFilters } from "@/components/ShopFilters";
 
-export const metadata: Metadata = {
-  title: "Shop",
-  description: "Shop early-access T-shirts from brand. Essentials, premium, and customizable tees shipping across India.",
-};
+function ShopContent() {
+  const [mounted, setMounted] = useState(false);
+  const searchParams = useSearchParams();
+  const filter = searchParams.get("filter") ?? "all";
+  const products = useAdminProducts((s) => s.products);
 
-type SearchParams = Promise<{ filter?: string }>;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-export default async function ShopPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const params = await searchParams;
-  const filter = params.filter ?? "all";
+  if (!mounted) {
+    return (
+      <div className="container-brand py-10 md:py-16 min-h-[50vh] flex items-center justify-center">
+        <p className="text-sm font-medium tracking-widest uppercase animate-pulse">Loading shop...</p>
+      </div>
+    );
+  }
+
+  // Sort products by priority (ascending)
+  const sortedProducts = [...products].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+
   const filtered =
     filter === "all"
-      ? products
-      : products.filter((p) => p.category === filter);
+      ? sortedProducts
+      : sortedProducts.filter((p) => p.category === filter);
 
   return (
     <div className="container-brand py-10 md:py-16">
@@ -49,5 +59,17 @@ export default async function ShopPage({
         <p className="py-20 text-center text-muted">No tees in this filter yet.</p>
       )}
     </div>
+  );
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense fallback={
+      <div className="container-brand py-10 md:py-16 min-h-[50vh] flex items-center justify-center">
+        <p className="text-sm font-medium tracking-widest uppercase animate-pulse">Loading shop...</p>
+      </div>
+    }>
+      <ShopContent />
+    </Suspense>
   );
 }
