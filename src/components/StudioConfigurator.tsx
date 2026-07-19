@@ -51,7 +51,7 @@ function Accordion({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between py-3.5 text-left text-[13px] font-medium text-[#1a1a1a]"
+        className="w-full flex items-center justify-between py-3.5 text-left text-[13px] font-medium text-[#1a1a1a] focus:outline-none"
         aria-expanded={open}
       >
         <span className="inline-flex items-center gap-2">
@@ -221,8 +221,8 @@ export function StudioConfigurator({
   }
 
   const sidebar = (
-    <aside className="w-full lg:w-[300px] shrink-0 z-20">
-      <div className="bg-white rounded-[22px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-black/5 p-4 md:p-5 flex flex-col gap-3 h-[530px] overflow-y-auto">
+    <aside className="w-full lg:w-[350px] shrink-0 z-20">
+      <div className="bg-white rounded-[22px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-black/5 p-5 md:p-6 flex flex-col gap-4 h-[560px] overflow-y-auto">
         {/* Apparel Type Dropdown */}
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-[0.14em] text-black/45">
@@ -338,18 +338,18 @@ export function StudioConfigurator({
                 <p className="text-[10px] uppercase tracking-[0.14em] text-black/45 mb-2">
                   Decoration Method
                 </p>
-                <div className="flex gap-1.5">
+                <div className="flex gap-2">
                   <button
                     key="decor-print"
                     type="button"
                     onClick={() => setDecorType("print")}
-                    className={`flex-1 rounded-full h-8 text-[10px] font-semibold border transition-colors ${
+                    className={`flex-1 rounded-full h-9 text-[11px] font-semibold border transition-all ${
                       decorType === "print"
-                        ? "bg-[#111] text-white border-[#111]"
-                        : "bg-white border-black/10 text-black/70 hover:border-black/20"
+                        ? "bg-[#111] text-white border-[#111] shadow-sm"
+                        : "bg-white border-black/10 text-black/70 hover:border-black/25"
                     }`}
                   >
-                    Print (Screen/DTG)
+                    Print
                   </button>
                   <button
                     key="decor-stitch"
@@ -358,19 +358,19 @@ export function StudioConfigurator({
                       setDecorType("stitch");
                       if (designScale > 0.8) setDesignScale(0.8);
                     }}
-                    className={`flex-1 rounded-full h-8 text-[10px] font-semibold border transition-colors ${
+                    className={`flex-1 rounded-full h-9 text-[11px] font-semibold border transition-all ${
                       decorType === "stitch"
-                        ? "bg-[#111] text-white border-[#111]"
-                        : "bg-white border-black/10 text-black/70 hover:border-black/20"
+                        ? "bg-[#111] text-white border-[#111] shadow-sm"
+                        : "bg-white border-black/10 text-black/70 hover:border-black/25"
                     }`}
                   >
-                    Stitch (Embroidery)
+                    Stitch
                   </button>
                 </div>
-                <p className="text-[9.5px] text-black/45 mt-1.5 leading-relaxed">
+                <p className="text-[9.5px] text-black/40 mt-2 leading-relaxed">
                   {decorType === "stitch"
-                    ? "Stitched designs are constrained to a maximum scale of 0.80 for physical frame limitations."
-                    : "Printed graphics can be stretched up to 2.50 to cover the full width of the shirt."}
+                    ? "Stitched embroidery is limited to a maximum scale of 0.80 for hoop size constraints."
+                    : "Printed graphics can be scaled up to 2.50 to cover the full width of the torso."}
                 </p>
               </div>
 
@@ -378,19 +378,19 @@ export function StudioConfigurator({
                 <p className="text-[10px] uppercase tracking-[0.14em] text-black/45 mb-2">
                   Logo placement
                 </p>
-                <div className="flex gap-1">
+                <div className="flex gap-1.5">
                   {LOGO_PLACEMENTS.map((p) => (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => setPlacement(p.id)}
-                      className={`flex-1 rounded-full h-8 text-[10px] font-semibold border transition-colors ${
+                      className={`flex-1 rounded-full h-9 text-[11px] font-semibold border transition-all ${
                         placement === p.id
-                          ? "bg-[#111] text-white border-[#111]"
-                          : "bg-white border-black/10 text-black/70 hover:border-black/20"
+                          ? "bg-[#111] text-white border-[#111] shadow-sm"
+                          : "bg-white border-black/10 text-black/70 hover:border-black/25"
                       }`}
                     >
-                      {p.label}
+                      {p.id === "chest-left" ? "Left Chest" : p.id === "chest-center" ? "Center" : "Back"}
                     </button>
                   ))}
                 </div>
@@ -400,7 +400,7 @@ export function StudioConfigurator({
                 <p className="text-[10px] uppercase tracking-[0.14em] text-black/45 mb-2">
                   Preset Designs
                 </p>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 gap-2">
                   {LOGO_PRESETS.map((preset) => (
                     <button
                       key={preset.id}
@@ -409,10 +409,10 @@ export function StudioConfigurator({
                         setLogoId(preset.id);
                         setCustomLogo(undefined);
                       }}
-                      className={`rounded-xl px-2 py-2 text-xs border transition-colors ${
+                      className={`rounded-xl px-2 py-2.5 text-xs border transition-all ${
                         logoId === preset.id && !customLogo
-                          ? "border-[#111] bg-white font-medium text-black"
-                          : "border-transparent bg-white/70 hover:border-black/20 text-black/60"
+                          ? "border-[#111] bg-[#111] text-white font-medium shadow-sm"
+                          : "border-black/5 bg-white/70 hover:border-black/20 text-black/60"
                       }`}
                     >
                       {preset.name}
@@ -769,9 +769,9 @@ export function StudioConfigurator({
   return (
     <div
       ref={shellRef}
-      className="relative bg-[#f7f7f5] -mx-5 md:-mx-8 px-4 md:px-6 py-4 md:py-5"
+      className="relative bg-[#f7f7f5] -mx-5 md:-mx-8 px-5 md:px-8 py-6 md:py-8 rounded-[32px] border border-black/5 shadow-[0_4px_30px_rgba(0,0,0,0.02)]"
     >
-      <div className="flex flex-col lg:flex-row gap-4 md:gap-5 h-[530px]">
+      <div className="flex flex-col lg:flex-row gap-5 lg:gap-8 h-[560px]">
         {sidebar}
         {canvas}
       </div>
