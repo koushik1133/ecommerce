@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { Check, Upload } from "lucide-react";
+import Link from "next/link";
+import { useRef, useState } from "react";
+import { Check, ImageIcon, Sparkles, Upload } from "lucide-react";
 import type { LogoPlacement, Product } from "@/lib/products";
 import {
   LOGO_PLACEMENTS,
@@ -9,7 +10,17 @@ import {
   formatINR,
 } from "@/lib/products";
 import { useCart } from "@/store/cart";
-import { TeeMockup } from "./TeeMockup";
+import {
+  STUDIO_BACKGROUNDS,
+  type StudioBackground,
+} from "@/lib/studio";
+import { PhotoGallery } from "@/components/spin/PhotoGallery";
+import { Tee3DViewer } from "@/components/spin/Tee3DViewer";
+import {
+  readFileAsDataUrl,
+  uploadErrorMessage,
+  validateImageContents,
+} from "@/lib/uploads";
 
 export function ProductConfigurator({ product }: { product: Product }) {
   const addItem = useCart((s) => s.addItem);
@@ -19,27 +30,53 @@ export function ProductConfigurator({ product }: { product: Product }) {
   const [logoId, setLogoId] = useState<string>(LOGO_PRESETS[0].id);
   const [placement, setPlacement] = useState<LogoPlacement>("chest-center");
   const [customLogo, setCustomLogo] = useState<string | undefined>();
+  const [background, setBackground] = useState<StudioBackground>(STUDIO_BACKGROUNDS[0]);
+  const [customBg, setCustomBg] = useState<string | undefined>();
+  const [viewMode, setViewMode] = useState<"photos" | "3d">(() =>
+    product.gallery && product.gallery.length > 0 ? "photos" : "3d"
+  );
   const [added, setAdded] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const bgFileRef = useRef<HTMLInputElement>(null);
 
   const color = product.colors[colorIdx];
   const logo = LOGO_PRESETS.find((l) => l.id === logoId) ?? LOGO_PRESETS[0];
   const logoLabel = customLogo ? undefined : logo.label;
   const disabled = Boolean(product.comingSoon);
+  const gallery = product.gallery ?? [];
 
-  const previewKey = useMemo(
-    () => `${color.hex}-${placement}-${logoId}-${customLogo ? "c" : "p"}`,
-    [color.hex, placement, logoId, customLogo]
-  );
-
-  function onUpload(file: File | undefined) {
+  async function onUpload(file: File | undefined) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setCustomLogo(String(reader.result));
+    const err = await validateImageContents(file);
+    if (err) {
+      setUploadError(uploadErrorMessage(err));
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setCustomLogo(dataUrl);
       setLogoId("custom");
-    };
-    reader.readAsDataURL(file);
+      setUploadError(null);
+      setViewMode("3d");
+    } catch {
+      setUploadError("Could not read that logo file.");
+    }
+  }
+
+  async function onBgUpload(file: File | undefined) {
+    if (!file) return;
+    const err = await validateImageContents(file);
+    if (err) {
+      setUploadError(uploadErrorMessage(err));
+      return;
+    }
+    try {
+      setCustomBg(await readFileAsDataUrl(file));
+      setUploadError(null);
+    } catch {
+      setUploadError("Could not read that background file.");
+    }
   }
 
   function handleAdd() {
@@ -64,23 +101,69 @@ export function ProductConfigurator({ product }: { product: Product }) {
 
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-      <div className="bg-surface relative" key={previewKey}>
-        <TeeMockup
-          color={color.hex}
-          logoLabel={logoLabel ?? "brand"}
-          logoDataUrl={customLogo}
-          placement={placement}
-          showBack={placement === "back"}
-        />
+      {/* Media column — Shopify-style */}
+      <div className="relative lg:sticky lg:top-28 lg:self-start space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setViewMode("photos")}
+            disabled={gallery.length === 0}
+            className={`px-3.5 py-1.5 text-xs tracking-wide border rounded-full transition-colors disabled:opacity-40 ${
+              viewMode === "photos"
+                ? "bg-ink text-chalk border-ink"
+                : "border-line text-muted hover:border-ink"
+            }`}
+          >
+            Photos{gallery.length ? ` (${gallery.length})` : ""}
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("3d")}
+            className={`px-3.5 py-1.5 text-xs tracking-wide border rounded-full transition-colors ${
+              viewMode === "3d"
+                ? "bg-ink text-chalk border-ink"
+                : "border-line text-muted hover:border-ink"
+            }`}
+          >
+            360°
+          </button>
+          <Link
+            href={`/configurator?product=${product.slug}`}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-ink/15 bg-accent-soft px-3.5 py-1.5 text-xs font-medium text-accent hover:bg-accent hover:text-white transition-colors"
+          >
+            <Sparkles size={13} strokeWidth={1.75} />
+            Configure your design
+          </Link>
+        </div>
+
+        {viewMode === "photos" && gallery.length > 0 ? (
+          <PhotoGallery images={gallery} />
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+            <Tee3DViewer
+              color={color.hex}
+              logoLabel={logoLabel ?? "brand"}
+              logoDataUrl={customLogo}
+              placement={placement}
+              background={background.value}
+              customBackgroundUrl={customBg}
+              autoRotate
+              rotateSpeed={0.85}
+              className="!aspect-[4/5] !min-h-[420px] !h-auto"
+            />
+          </div>
+        )}
+
         {product.comingSoon && (
-          <div className="absolute inset-0 bg-ink/35 flex items-center justify-center">
-            <span className="bg-chalk px-4 py-2 text-xs tracking-[0.22em] uppercase font-medium">
+          <div className="absolute inset-0 top-10 bg-ink/35 flex items-center justify-center z-10 rounded-2xl">
+            <span className="bg-chalk px-4 py-2 text-xs tracking-[0.22em] uppercase font-medium rounded-full">
               Coming soon
             </span>
           </div>
         )}
       </div>
 
+      {/* Buy column */}
       <div className="flex flex-col">
         <div className="animate-fade-up">
           {product.badges?.[0] && (
@@ -101,32 +184,30 @@ export function ProductConfigurator({ product }: { product: Product }) {
             )}
             <span className="text-xs text-muted ml-1">incl. GST</span>
           </div>
+          <p className="mt-5 text-[15px] leading-relaxed text-ink/80">
+            {product.description}
+          </p>
         </div>
 
-        <p className="mt-6 text-[15px] leading-relaxed text-ink/80 animate-fade-up-delay">
-          {product.description}
-        </p>
-
-        <div className="mt-8 space-y-7 animate-fade-up-delay-2">
+        <div className="mt-8 space-y-7">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium">Colour</p>
-              <p className="text-sm text-muted">{color.name}</p>
+              <p className="text-xs tracking-[0.16em] uppercase text-muted">Colour</p>
+              <span className="text-sm">{color.name}</span>
             </div>
             <div className="flex flex-wrap gap-2.5">
               {product.colors.map((c, i) => (
                 <button
                   key={c.slug}
                   type="button"
+                  title={c.name}
                   onClick={() => setColorIdx(i)}
                   className={`h-9 w-9 rounded-full border-2 transition-transform ${
                     i === colorIdx
                       ? "border-ink scale-110"
-                      : "border-transparent hover:scale-105"
+                      : "border-transparent shadow-[0_0_0_1px_rgba(0,0,0,0.12)]"
                   }`}
                   style={{ backgroundColor: c.hex }}
-                  aria-label={c.name}
-                  title={c.name}
                 />
               ))}
             </div>
@@ -134,10 +215,13 @@ export function ProductConfigurator({ product }: { product: Product }) {
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium">Size</p>
-              <a href="/size-guide" className="text-sm text-muted underline underline-offset-2 hover:text-ink">
+              <p className="text-xs tracking-[0.16em] uppercase text-muted">Size</p>
+              <Link
+                href="/size-guide"
+                className="text-xs underline underline-offset-4 text-muted hover:text-ink"
+              >
                 Size guide
-              </a>
+              </Link>
             </div>
             <div className="flex flex-wrap gap-2">
               {product.sizes.map((s) => (
@@ -145,7 +229,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
                   key={s}
                   type="button"
                   onClick={() => setSize(s)}
-                  className={`min-w-12 h-11 px-3 border text-sm transition-colors ${
+                  className={`h-11 min-w-11 px-3 text-sm border rounded-lg transition-colors ${
                     size === s
                       ? "bg-ink text-chalk border-ink"
                       : "border-line hover:border-ink"
@@ -158,8 +242,8 @@ export function ProductConfigurator({ product }: { product: Product }) {
           </div>
 
           <div>
-            <p className="text-sm font-medium mb-3">Logo</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <p className="text-xs tracking-[0.16em] uppercase text-muted mb-3">Logo</p>
+            <div className="grid grid-cols-2 gap-2">
               {LOGO_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
@@ -168,51 +252,52 @@ export function ProductConfigurator({ product }: { product: Product }) {
                     setLogoId(preset.id);
                     setCustomLogo(undefined);
                   }}
-                  className={`border px-3 py-3 text-left transition-colors ${
+                  className={`rounded-xl border px-3 py-3 text-left text-sm transition-colors ${
                     logoId === preset.id && !customLogo
                       ? "border-ink bg-surface"
                       : "border-line hover:border-ink/40"
                   }`}
                 >
-                  <span className="font-display text-sm font-bold lowercase block">
-                    {preset.label}
-                  </span>
-                  <span className="text-[11px] text-muted mt-1 block">
-                    {preset.name}
-                  </span>
+                  <span className="font-medium">{preset.name}</span>
+                  <span className="block text-xs text-muted mt-0.5">{preset.label}</span>
                 </button>
               ))}
             </div>
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className={`mt-2 w-full border border-dashed px-4 py-3 text-sm flex items-center justify-center gap-2 transition-colors ${
+              className={`mt-2 w-full border border-dashed rounded-xl px-4 py-3 text-sm flex items-center justify-center gap-2 transition-colors ${
                 customLogo
                   ? "border-accent bg-accent-soft text-accent"
                   : "border-line hover:border-ink"
               }`}
             >
               <Upload size={16} strokeWidth={1.5} />
-              {customLogo ? "Custom logo uploaded — change" : "Upload your logo"}
+              {customLogo ? "Custom logo — change" : "Upload your logo"}
             </button>
             <input
               ref={fileRef}
               type="file"
-              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
               className="hidden"
-              onChange={(e) => onUpload(e.target.files?.[0])}
+              onChange={(e) => {
+                void onUpload(e.target.files?.[0]);
+                e.target.value = "";
+              }}
             />
           </div>
 
           <div>
-            <p className="text-sm font-medium mb-3">Placement</p>
+            <p className="text-xs tracking-[0.16em] uppercase text-muted mb-3">
+              Placement
+            </p>
             <div className="flex flex-wrap gap-2">
               {LOGO_PLACEMENTS.map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => setPlacement(p.id)}
-                  className={`px-4 h-11 border text-sm transition-colors ${
+                  className={`px-3.5 py-2 text-sm border rounded-full transition-colors ${
                     placement === p.id
                       ? "bg-ink text-chalk border-ink"
                       : "border-line hover:border-ink"
@@ -224,8 +309,64 @@ export function ProductConfigurator({ product }: { product: Product }) {
             </div>
           </div>
 
+          <div>
+            <p className="text-xs tracking-[0.16em] uppercase text-muted mb-3">
+              Studio background
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {STUDIO_BACKGROUNDS.map((bg) => (
+                <button
+                  key={bg.id}
+                  type="button"
+                  onClick={() => {
+                    setBackground(bg);
+                    setCustomBg(undefined);
+                  }}
+                  className={`rounded-xl overflow-hidden border text-left ${
+                    background.id === bg.id && !customBg
+                      ? "border-ink ring-1 ring-ink"
+                      : "border-line"
+                  }`}
+                >
+                  <div className="h-10" style={{ background: bg.value }} />
+                  <span className="block px-1.5 py-1 text-[10px] tracking-wide uppercase text-muted">
+                    {bg.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => bgFileRef.current?.click()}
+              className={`mt-2 w-full border border-dashed rounded-xl px-4 py-3 text-sm flex items-center justify-center gap-2 transition-colors ${
+                customBg
+                  ? "border-accent bg-accent-soft text-accent"
+                  : "border-line hover:border-ink"
+              }`}
+            >
+              <ImageIcon size={16} strokeWidth={1.5} />
+              {customBg ? "Custom background — change" : "Upload background image"}
+            </button>
+            <input
+              ref={bgFileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                void onBgUpload(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </div>
+
+          {uploadError ? (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+              {uploadError}
+            </p>
+          ) : null}
+
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            <div className="inline-flex items-center border border-line h-12">
+            <div className="inline-flex items-center border border-line h-12 rounded-xl overflow-hidden">
               <button
                 type="button"
                 className="w-11 h-full hover:bg-surface"
@@ -248,7 +389,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
               type="button"
               disabled={disabled}
               onClick={handleAdd}
-              className="flex-1 min-w-[180px] h-12 bg-ink text-chalk text-sm font-medium tracking-wide hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
+              className="flex-1 min-w-[180px] h-12 rounded-xl bg-ink text-chalk text-sm font-medium tracking-wide hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2"
             >
               {disabled ? (
                 "Coming soon"
@@ -261,6 +402,14 @@ export function ProductConfigurator({ product }: { product: Product }) {
               )}
             </button>
           </div>
+
+          <Link
+            href={`/configurator?product=${product.slug}`}
+            className="w-full h-12 rounded-xl border border-ink/20 text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-ink hover:text-chalk transition-colors"
+          >
+            <Sparkles size={16} strokeWidth={1.75} />
+            Configure your own design
+          </Link>
         </div>
 
         <dl className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-line pt-8 text-sm">
@@ -276,10 +425,10 @@ export function ProductConfigurator({ product }: { product: Product }) {
             </dt>
             <dd>{product.fit}</dd>
           </div>
-          {product.features.map((f) => (
-            <div key={f} className="sm:col-span-2 flex gap-2">
-              <Check size={16} className="text-accent mt-0.5 shrink-0" />
-              <dd>{f}</dd>
+          {product.features.slice(0, 4).map((f) => (
+            <div key={f} className="sm:col-span-2 flex gap-2 text-muted">
+              <span className="text-accent mt-0.5">✓</span>
+              <span>{f}</span>
             </div>
           ))}
         </dl>

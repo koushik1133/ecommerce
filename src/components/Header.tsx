@@ -8,6 +8,7 @@ import { useCart } from "@/store/cart";
 
 const NAV = [
   { href: "/shop", label: "Shop" },
+  { href: "/configurator", label: "Configurator" },
   { href: "/about", label: "About" },
   { href: "/size-guide", label: "Size guide" },
   { href: "/contact", label: "Contact" },
@@ -31,6 +32,10 @@ export function Header() {
   }, []);
 
   useEffect(() => setOpen(false), [pathname]);
+
+  useEffect(() => {
+    useCart.getState().closeCart();
+  }, [pathname]);
 
   return (
     <>

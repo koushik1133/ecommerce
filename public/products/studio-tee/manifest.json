@@ -1,0 +1,24 @@
+{
+  "gallery": [
+    { "src": "/products/studio-tee/gallery/front-clean.jpg", "label": "Front" },
+    { "src": "/products/studio-tee/gallery/back-clean.jpg", "label": "Back" },
+    { "src": "/products/studio-tee/gallery/right-side-clean.jpg", "label": "Right side" },
+    { "src": "/products/studio-tee/gallery/left-side-clean.jpg", "label": "Left side" },
+    { "src": "/products/studio-tee/gallery/flat-lay-clean.jpg", "label": "Flat lay" },
+    { "src": "/products/studio-tee/gallery/embroidery-closeup-clean.jpg", "label": "Embroidery" },
+    { "src": "/products/studio-tee/gallery/neck-closeup-clean.jpg", "label": "Neck" },
+    { "src": "/products/studio-tee/gallery/sleeve-closeup-clean.jpg", "label": "Sleeve" },
+    { "src": "/products/studio-tee/gallery/hem-closeup-clean.jpg", "label": "Hem" },
+    { "src": "/products/studio-tee/gallery/on-model-clean.jpg", "label": "On model" }
+  ],
+  "spinFrames": [
+    "/products/studio-tee/spin/final/01.jpg",
+    "/products/studio-tee/spin/final/02.jpg",
+    "/products/studio-tee/spin/final/03.jpg",
+    "/products/studio-tee/spin/final/04.jpg",
+    "/products/studio-tee/spin/final/05.jpg",
+    "/products/studio-tee/spin/final/06.jpg",
+    "/products/studio-tee/spin/final/07.jpg",
+    "/products/studio-tee/spin/final/08.jpg"
+  ]
+}

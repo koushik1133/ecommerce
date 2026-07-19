@@ -5,26 +5,36 @@ import { TeeMockup } from "./TeeMockup";
 
 export function ProductCard({ product }: { product: Product }) {
   const color = product.colors[0];
+  const cover = product.gallery?.[0]?.src;
 
   return (
     <Link
       href={`/product/${product.slug}`}
       className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
-      <div className="relative bg-surface overflow-hidden">
-        <TeeMockup
-          color={color.hex}
-          logoLabel="brand"
-          placement="chest-center"
-          className="transition-transform duration-500 group-hover:scale-[1.03]"
-        />
+      <div className="relative bg-surface overflow-hidden rounded-2xl aspect-[4/5]">
+        {cover ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={cover}
+            alt={product.name}
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <TeeMockup
+            color={color.hex}
+            logoLabel="brand"
+            placement="chest-center"
+            className="transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+        )}
         {product.comingSoon && (
-          <span className="absolute top-3 left-3 bg-ink text-chalk text-[10px] tracking-[0.18em] uppercase px-2.5 py-1">
+          <span className="absolute top-3 left-3 bg-ink text-chalk text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded-full">
             Coming soon
           </span>
         )}
         {product.badges?.[0] && !product.comingSoon && (
-          <span className="absolute top-3 left-3 bg-chalk/90 text-ink text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 border border-line">
+          <span className="absolute top-3 left-3 bg-chalk/90 text-ink text-[10px] tracking-[0.18em] uppercase px-2.5 py-1 rounded-full border border-line">
             {product.badges[0]}
           </span>
         )}

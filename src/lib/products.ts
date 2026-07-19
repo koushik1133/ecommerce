@@ -20,6 +20,12 @@ export type Product = {
   badges?: string[];
   comingSoon?: boolean;
   category: "essentials" | "graphics" | "premium";
+  /** Public paths to ordered 360° frames. If 2+, photo-spin viewer is used. */
+  spinFrames?: string[];
+  /** Product photo gallery */
+  gallery?: { src: string; label: string }[];
+  /** Prefer photos | 360 | 3d */
+  viewer?: "photos" | "spin" | "3d" | "auto";
 };
 
 export const SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
@@ -56,6 +62,57 @@ export const LOGO_PLACEMENTS: { id: LogoPlacement; label: string }[] = [
 ];
 
 export const products: Product[] = [
+  {
+    id: "0",
+    slug: "studio-tee",
+    name: "Studio Tee",
+    tagline: "Ganesha embroidered drop.",
+    description:
+      "A black cotton crew with gold Ganesha embroidery on the chest. Customize colour and logo on the 360° object, then browse all ten studio photos.",
+    price: 1499,
+    compareAt: 1899,
+    colors: [
+      { name: "Ink", hex: "#1A1A1A", slug: "ink" },
+      { name: "Chalk", hex: "#F2F0EB", slug: "chalk" },
+      { name: "Forest", hex: "#1F4D3A", slug: "forest" },
+      { name: "Ocean", hex: "#1B3A4B", slug: "ocean" },
+      { name: "Bone", hex: "#E8E4DC", slug: "bone" },
+    ],
+    sizes: [...SIZES],
+    fabric: "100% cotton, 200 GSM",
+    fit: "Regular",
+    features: [
+      "Gold Ganesha chest embroidery",
+      "10-photo studio gallery",
+      "Interactive 360° object",
+      "Pan-India shipping",
+    ],
+    badges: ["New drop"],
+    category: "premium",
+    viewer: "photos",
+    gallery: [
+      { src: "/products/studio-tee/gallery/front-clean.jpg", label: "Front" },
+      { src: "/products/studio-tee/gallery/back-clean.jpg", label: "Back" },
+      { src: "/products/studio-tee/gallery/right-side-clean.jpg", label: "Right side" },
+      { src: "/products/studio-tee/gallery/left-side-clean.jpg", label: "Left side" },
+      { src: "/products/studio-tee/gallery/flat-lay-clean.jpg", label: "Flat lay" },
+      { src: "/products/studio-tee/gallery/embroidery-closeup-clean.jpg", label: "Embroidery" },
+      { src: "/products/studio-tee/gallery/neck-closeup-clean.jpg", label: "Neck" },
+      { src: "/products/studio-tee/gallery/sleeve-closeup-clean.jpg", label: "Sleeve" },
+      { src: "/products/studio-tee/gallery/hem-closeup-clean.jpg", label: "Hem" },
+      { src: "/products/studio-tee/gallery/on-model-clean.jpg", label: "On model" },
+    ],
+    spinFrames: [
+      "/products/studio-tee/spin/final/01.jpg",
+      "/products/studio-tee/spin/final/02.jpg",
+      "/products/studio-tee/spin/final/03.jpg",
+      "/products/studio-tee/spin/final/04.jpg",
+      "/products/studio-tee/spin/final/05.jpg",
+      "/products/studio-tee/spin/final/06.jpg",
+      "/products/studio-tee/spin/final/07.jpg",
+      "/products/studio-tee/spin/final/08.jpg",
+    ],
+  },
   {
     id: "1",
     slug: "everyday-crew",
@@ -186,6 +243,7 @@ export const products: Product[] = [
     ],
     badges: ["Customizable"],
     category: "premium",
+    viewer: "3d",
   },
   {
     id: "6",
@@ -220,11 +278,8 @@ export function getProduct(slug: string) {
 }
 
 export function formatINR(amount: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
+  // Stable formatting (avoid locale hydration mismatches)
+  return `₹${Math.round(amount).toLocaleString("en-IN")}`;
 }
 
 export const SHIPPING_FLAT = 79;

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="800" height="1000">
+  <rect width="400" height="500" fill="#F0EFEC"/>
+  <ellipse cx="200" cy="468" rx="75" ry="9" fill="#000" opacity="0.08"/>
+  <path d="M127.5 148 L82.5 175 L112.5 210 L142.5 165 Z" fill="#1A1A1A" opacity="0.92"/><path d="M272.5 148 L317.5 175 L287.5 210 L257.5 165 Z" fill="#1A1A1A" opacity="0.92"/>
+  <path d="M122.5 150 C122.5 150 180 100 200 100 C220 100 277.5 150 277.5 150 L277.5 420 C277.5 445 230 458 200 458 C170 458 122.5 445 122.5 420 Z" fill="#1A1A1A"/>
+  <path d="M166 105 C185 128 215 128 234 105 C210 92 205 88 200 88 C195 88 190 92 166 105 Z" fill="#1A1A1A" opacity="0.85"/>
+  <ellipse cx="200" cy="100" rx="32" ry="12" fill="#F0EFEC"/>
+  <text x="200" y="200" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="28" fill="#F5F5F4" opacity="1" transform="translate(7.347880794884119e-16,0) scale(1,1)" style="transform-origin:200px 200px">brand</text>
+</svg>

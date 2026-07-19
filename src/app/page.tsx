@@ -4,7 +4,12 @@ import { TeeMockup } from "@/components/TeeMockup";
 import { products } from "@/lib/products";
 
 export default function HomePage() {
-  const featured = products.filter((p) => !p.comingSoon).slice(0, 4);
+  const featured = [
+    products.find((p) => p.slug === "studio-tee"),
+    ...products.filter((p) => !p.comingSoon && p.slug !== "studio-tee"),
+  ]
+    .filter(Boolean)
+    .slice(0, 4) as typeof products;
 
   return (
     <>
@@ -113,10 +118,10 @@ export default function HomePage() {
               before you add to bag.
             </p>
             <Link
-              href="/product/monogram-tee"
+              href="/product/studio-tee"
               className="mt-8 inline-flex bg-ink text-chalk px-6 py-3.5 text-sm font-medium hover:bg-accent transition-colors"
             >
-              Try Monogram Tee
+              Open 3D Studio Tee
             </Link>
           </div>
           <div className="bg-chalk/70 p-4 md:p-8">
