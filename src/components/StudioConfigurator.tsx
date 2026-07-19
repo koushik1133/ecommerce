@@ -14,6 +14,7 @@ import {
   LOGO_PLACEMENTS,
   LOGO_PRESETS,
   formatINR,
+  getModelSlugForProduct,
   products,
 } from "@/lib/products";
 import { useCart } from "@/store/cart";
@@ -95,7 +96,11 @@ export function StudioConfigurator({
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Map of modelSlug to product metadata/settings
-  const [modelSlug, setModelSlug] = useState<string>("oversized-tshirt");
+  const [modelSlug, setModelSlug] = useState<string>(
+    product.modelSlug || getModelSlugForProduct(product) || "oversized-tshirt"
+  );
+  const activeProduct =
+    products.find((p) => (p.modelSlug || getModelSlugForProduct(p)) === modelSlug) || product;
   const isTop = !["sweatpants", "cap"].includes(modelSlug);
 
   // Advanced Shader States
@@ -129,16 +134,16 @@ export function StudioConfigurator({
   const viewerRef = useRef<Tee3DViewerHandle>(null);
   const shellRef = useRef<HTMLDivElement>(null);
 
-  const color = product.colors[colorIdx];
+  const color = activeProduct.colors[colorIdx] || activeProduct.colors[0];
   const logo = LOGO_PRESETS.find((l) => l.id === logoId) ?? LOGO_PRESETS[0];
   const logoLabel = customLogo ? undefined : logo.label;
-  const disabled = Boolean(product.comingSoon);
+  const disabled = Boolean(activeProduct.comingSoon);
 
   // Dynamic Background: White/Light-grey for dark shirts, Dark/Black for light shirts
   let currentBgColor = isHexDark(color.hex) ? "#fafaf9" : "#1a1a1a";
-  if (product.backgroundMode === "light") {
+  if (activeProduct.backgroundMode === "light") {
     currentBgColor = "#fafaf9";
-  } else if (product.backgroundMode === "dark" || product.backgroundMode === "darken") {
+  } else if (activeProduct.backgroundMode === "dark" || activeProduct.backgroundMode === "darken") {
     currentBgColor = "#1a1a1a";
   }
 
@@ -166,10 +171,10 @@ export function StudioConfigurator({
   function handleAdd() {
     if (disabled) return;
     addItem({
-      productId: product.id,
-      slug: product.slug,
-      name: product.name,
-      price: product.price,
+      productId: activeProduct.id,
+      slug: activeProduct.slug,
+      name: activeProduct.name,
+      price: activeProduct.price,
       color: color.name,
       colorHex: color.hex,
       size,
@@ -542,13 +547,13 @@ export function StudioConfigurator({
             onToggle={() => togglePanel("buy")}
           >
             <div className="space-y-1.5">
-              <p className="font-display text-sm font-bold tracking-tight text-[#111]">{product.name}</p>
-              <p className="text-[11px] text-black/55">{product.tagline}</p>
+              <p className="font-medium text-[13px] text-[#111]">{activeProduct.name}</p>
+              <p className="text-[11px] text-black/55">{activeProduct.tagline}</p>
               <p className="text-sm font-semibold pt-1 text-[#111]">
-                {formatINR(product.price)}
-                {product.compareAt ? (
+                {formatINR(activeProduct.price)}
+                {activeProduct.compareAt ? (
                   <span className="ml-2 text-xs text-black/40 line-through font-normal">
-                    {formatINR(product.compareAt)}
+                    {formatINR(activeProduct.compareAt)}
                   </span>
                 ) : null}
               </p>
@@ -558,7 +563,7 @@ export function StudioConfigurator({
                 Size
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {product.sizes.map((s) => (
+                {activeProduct.sizes.map((s) => (
                   <button
                     key={s}
                     type="button"

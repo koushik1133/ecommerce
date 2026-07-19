@@ -33,9 +33,7 @@ export function ProductConfigurator({ product }: { product: Product }) {
   const [customLogo, setCustomLogo] = useState<string | undefined>();
   const [background, setBackground] = useState<StudioBackground>(STUDIO_BACKGROUNDS[0]);
   const [customBg, setCustomBg] = useState<string | undefined>();
-  const [viewMode, setViewMode] = useState<"photos" | "3d">(
-    product.viewer === "3d" ? "3d" : "photos"
-  );
+  const [viewMode, setViewMode] = useState<"photos" | "3d">("3d");
   const [added, setAdded] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
