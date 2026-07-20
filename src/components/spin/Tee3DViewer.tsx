@@ -420,7 +420,7 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           const wrapper = new THREE.Group();
           wrapper.name = "garmentWrapper";
           wrapper.add(tshirtGroup);
-          wrapper.scale.setScalar(finalScale * 0.4); // Scale appropriately for viewports
+          wrapper.scale.setScalar(finalScale);
           wrapper.position.set(0, yOffset, 0);
 
           tshirtGroupRef.current = wrapper;

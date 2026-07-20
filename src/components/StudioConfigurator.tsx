@@ -108,7 +108,9 @@ export function StudioConfigurator({
   }, [product]);
 
   const activeProduct =
-    products.find((p) => (p.modelSlug || getModelSlugForProduct(p)) === modelSlug) || product;
+    products.find((p) => p.slug === modelSlug || p.id === modelSlug) ||
+    products.find((p) => (p.modelSlug || getModelSlugForProduct(p)) === modelSlug) ||
+    product;
   const isTop = !["sweatpants", "cap"].includes(modelSlug);
 
   // Advanced Shader States
@@ -785,7 +787,7 @@ export function StudioConfigurator({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-black/50 px-1">
         <p>
-          {product.name} · {formatINR(product.price)} · drag inside the box to rotate 360°
+          {activeProduct.name} · {formatINR(activeProduct.price)} · drag inside the box to rotate 360°
         </p>
       </div>
 
