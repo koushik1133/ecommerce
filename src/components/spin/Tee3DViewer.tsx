@@ -283,7 +283,11 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
       const scene = sceneRef.current;
       if (!sceneReady || !scene) return;
 
-      // 1. Clean up/dispose previous model if it exists
+      // 1. Clean up/dispose previous model wrapper if it exists
+      const existingWrapper = scene.getObjectByName("garmentWrapper");
+      if (existingWrapper) {
+        scene.remove(existingWrapper);
+      }
       if (tshirtGroupRef.current) {
         scene.remove(tshirtGroupRef.current);
         tshirtGroupRef.current.traverse((child) => {
@@ -333,32 +337,48 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
           const tshirtGroup = gltf.scene;
           tshirtGroupRef.current = tshirtGroup;
 
-          // Reset pivots
+          // STEP 1: Reveal zero-scaled nodes (Verge3D hides variants by setting parent scale=(0,0,0))
           tshirtGroup.traverse((child) => {
-            if (child.name.toLowerCase().includes("pivot")) {
+            if (child.scale.x === 0 || child.scale.y === 0 || child.scale.z === 0) {
               child.scale.set(1, 1, 1);
               child.matrixAutoUpdate = true;
               child.updateMatrix();
             }
           });
 
+          // STEP 2: Show static garment mesh, hide background/cameras/hardware/duplicate exports
           const hiddenPatterns = [
             "env_sphere", "cameradefault", "camrotate", "tshirt_walking", "tshirt_waves",
             "3dmodelexport", "v3d_proxy", "snaplock", "rope", "plane", "hanger", "stand", "metal01"
           ];
 
-          // Compute size and center
-          const box = new THREE.Box3();
-          let hasMesh = false;
           tshirtGroup.traverse((child) => {
             if (child instanceof THREE.Mesh) {
               const name = child.name.toLowerCase();
               const isDuplicateVariant = (name.includes("tshirt_static") || name.includes("3dmodelexport")) && /\d{3,}$/.test(name);
               const shouldHide = hiddenPatterns.some((p) => name.includes(p)) || isDuplicateVariant;
               child.visible = !shouldHide;
-              if (!shouldHide) {
-                box.expandByObject(child);
-                hasMesh = true;
+            }
+          });
+
+          // Force update of matrixWorld hierarchy so bounding box uses true node scales & transforms
+          tshirtGroup.updateMatrixWorld(true);
+
+          // STEP 3: Compute exact bounding box of visible meshes
+          const box = new THREE.Box3();
+          let hasMesh = false;
+          tshirtGroup.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.visible) {
+              child.geometry.computeBoundingBox();
+              if (child.geometry.boundingBox) {
+                const tmp = child.geometry.boundingBox.clone().applyMatrix4(child.matrixWorld);
+                if (!tmp.isEmpty()) {
+                  const s = tmp.getSize(new THREE.Vector3());
+                  if (s.x > 0.001 || s.y > 0.001 || s.z > 0.001) {
+                    box.union(tmp);
+                    hasMesh = true;
+                  }
+                }
               }
             }
           });
@@ -367,35 +387,45 @@ export const Tee3DViewer = forwardRef<Tee3DViewerHandle, Tee3DViewerProps>(
             box.setFromObject(tshirtGroup);
           }
 
-          const center = box.getCenter(new THREE.Vector3());
           const size = box.getSize(new THREE.Vector3());
+          const center = box.getCenter(new THREE.Vector3());
           const maxDim = Math.max(size.x, size.y, size.z);
 
-          // Determine scaleVal & yOffset dynamically per modelSlug:
-          let scaleVal = 1.6;
-          let yOffset = -0.2;
+          // STEP 4: Scale and center using model-specific targets
+          let targetSize = 4.2;
+          let yOffset = 0.1;
           if (modelSlug === "cap") {
-            scaleVal = 1.0;
-            yOffset = -0.1;
+            targetSize = 2.5;
+            yOffset = 0.1;
           } else if (modelSlug === "sweatpants") {
-            scaleVal = 1.8;
-            yOffset = 0.1;
+            targetSize = 4.0;
+            yOffset = -0.3;
           } else if (["hanging-tshirt", "hanging-hoodie"].includes(modelSlug)) {
-            scaleVal = 1.6;
+            targetSize = 4.2;
+            yOffset = 0.2;
+          } else if (["sweatshirt", "hoodie", "polo-shirt", "zip-hoodie", "boxy-tshirt", "regular-tshirt", "oversized-tshirt"].includes(modelSlug)) {
+            targetSize = 4.2;
             yOffset = 0.1;
+          } else {
+            targetSize = 4.5;
+            yOffset = 0.5;
           }
 
-          const finalScale = scaleVal / (maxDim > 0 ? maxDim : 1);
+          // Offset tshirtGroup so its geometry center sits at origin
+          tshirtGroup.position.set(-center.x, -center.y, -center.z);
 
-          tshirtGroup.scale.setScalar(finalScale);
-          tshirtGroup.position.set(
-            -center.x * finalScale,
-            -center.y * finalScale + yOffset,
-            -center.z * finalScale
-          );
-          loadedPositionRef.current.copy(tshirtGroup.position);
+          const finalScale = maxDim > 0 ? targetSize / maxDim : 1;
 
-          sceneRef.current?.add(tshirtGroup);
+          // Create container group for wrapper scale and placement
+          const wrapper = new THREE.Group();
+          wrapper.name = "garmentWrapper";
+          wrapper.add(tshirtGroup);
+          wrapper.scale.setScalar(finalScale * 0.4); // Scale appropriately for viewports
+          wrapper.position.set(0, yOffset, 0);
+
+          tshirtGroupRef.current = wrapper;
+          loadedPositionRef.current.copy(wrapper.position);
+          sceneRef.current?.add(wrapper);
 
           // Configure meshes and materials
           tshirtGroup.traverse((child) => {
