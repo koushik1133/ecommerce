@@ -30,7 +30,13 @@ function ShopContent() {
   const filtered =
     filter === "all"
       ? sortedProducts
-      : sortedProducts.filter((p) => p.category === filter);
+      : sortedProducts.filter((p) => {
+          if (filter === "t-shirts") return p.garmentCategory === "T-Shirts";
+          if (filter === "pants") return p.garmentCategory === "Pants";
+          if (filter === "caps") return p.garmentCategory === "Caps";
+          if (filter === "hoodies") return p.garmentCategory === "Hoodies/Sweatshirts";
+          return p.category === filter;
+        });
 
   return (
     <div className="container-brand py-10 md:py-16">

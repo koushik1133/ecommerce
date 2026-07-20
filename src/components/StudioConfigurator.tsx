@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Check,
   ChevronDown,
@@ -99,6 +99,14 @@ export function StudioConfigurator({
   const [modelSlug, setModelSlug] = useState<string>(
     product.modelSlug || getModelSlugForProduct(product) || "oversized-tshirt"
   );
+
+  useEffect(() => {
+    const targetSlug = product.modelSlug || getModelSlugForProduct(product);
+    if (targetSlug) {
+      setModelSlug(targetSlug);
+    }
+  }, [product]);
+
   const activeProduct =
     products.find((p) => (p.modelSlug || getModelSlugForProduct(p)) === modelSlug) || product;
   const isTop = !["sweatpants", "cap"].includes(modelSlug);

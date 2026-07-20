@@ -2,9 +2,12 @@ import Link from "next/link";
 
 const FILTERS = [
   { id: "all", label: "All" },
+  { id: "t-shirts", label: "T-Shirts" },
+  { id: "pants", label: "Pants" },
+  { id: "caps", label: "Caps" },
+  { id: "hoodies", label: "Hoodies & Sweatshirts" },
   { id: "essentials", label: "Essentials" },
   { id: "premium", label: "Premium" },
-  { id: "graphics", label: "Graphics" },
 ];
 
 export function ShopFilters({
