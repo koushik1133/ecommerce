@@ -8,6 +8,8 @@ export type RealVisitorSession = {
     country: string;
     flag: string;
     code: string;
+    lat: number;
+    lng: number;
   };
   page: string;
   pageTitle: string;
@@ -33,9 +35,10 @@ export type RealLiveEvent = {
   type: "page_view" | "3d_rotate" | "color_change" | "logo_upload" | "add_to_cart" | "checkout_start";
   description: string;
   timestamp: number;
+  lat?: number;
+  lng?: number;
 };
 
-// In-memory server store for active real sessions
 const activeSessions = new Map<string, RealVisitorSession>();
 const realEvents: RealLiveEvent[] = [];
 
@@ -54,11 +57,27 @@ const COUNTRY_FLAGS: Record<string, string> = {
   LOCAL: "💻",
 };
 
+const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  Mumbai: { lat: 19.076, lng: 72.8777 },
+  Delhi: { lat: 28.6139, lng: 77.209 },
+  Bengaluru: { lat: 12.9716, lng: 77.5946 },
+  London: { lat: 51.5074, lng: -0.1278 },
+  "New York": { lat: 40.7128, lng: -74.006 },
+  "San Francisco": { lat: 37.7749, lng: -122.4194 },
+  Tokyo: { lat: 35.6762, lng: 139.6503 },
+  Toronto: { lat: 43.6532, lng: -79.3832 },
+  Berlin: { lat: 52.52, lng: 13.405 },
+  Sydney: { lat: -33.8688, lng: 151.2093 },
+  Paris: { lat: 48.8566, lng: 2.3522 },
+  Singapore: { lat: 1.3521, lng: 103.8198 },
+  Dubai: { lat: 25.2048, lng: 55.2708 },
+};
+
 const AVATAR_COLORS = ["#0f6e56", "#6366f1", "#f59e0b", "#ec4899", "#10b981", "#8b5cf6", "#06b6d4", "#ef4444"];
 
 export function getRealSessions(): RealVisitorSession[] {
   const now = Date.now();
-  const validThreshold = 15000; // 15 seconds timeout
+  const validThreshold = 20000; // 20s active threshold
 
   const list: RealVisitorSession[] = [];
   for (const [id, session] of activeSessions.entries()) {
@@ -84,13 +103,25 @@ export function recordHeartbeat(req: NextRequest, body: any): RealVisitorSession
   const xForwardedFor = req.headers.get("x-forwarded-for");
   const ip = xForwardedFor ? xForwardedFor.split(",")[0].trim() : req.headers.get("x-real-ip") || "127.0.0.1";
 
-  // Geo headers (e.g. Vercel or Cloudflare)
+  // Geo headers
   const cityHeader = req.headers.get("x-vercel-ip-city") || req.headers.get("cf-ipcity");
   const countryHeader = req.headers.get("x-vercel-ip-country") || req.headers.get("cf-ipcountry") || "LOCAL";
-  
-  const city = cityHeader ? decodeURIComponent(cityHeader) : (ip === "127.0.0.1" || ip === "::1" ? "Local Device" : "Online Visitor");
+
+  const city = cityHeader
+    ? decodeURIComponent(cityHeader)
+    : ip === "127.0.0.1" || ip === "::1"
+    ? "Local Device"
+    : "Online Visitor";
+
   const country = countryHeader === "LOCAL" ? "Local Traffic" : countryHeader;
   const flag = COUNTRY_FLAGS[countryHeader.toUpperCase()] || "🌐";
+
+  // Resolve lat/lng coordinates
+  let coords = CITY_COORDINATES[city] || CITY_COORDINATES["New York"];
+  if (ip === "127.0.0.1" || ip === "::1") {
+    // Default local demo location near Mumbai/Delhi or SF
+    coords = { lat: 19.076, lng: 72.8777 };
+  }
 
   // User agent parsing
   const ua = req.headers.get("user-agent") || "";
@@ -122,6 +153,8 @@ export function recordHeartbeat(req: NextRequest, body: any): RealVisitorSession
       country,
       flag,
       code: countryHeader,
+      lat: coords.lat,
+      lng: coords.lng,
     },
     page: body.page || "/",
     pageTitle: body.pageTitle || "Browsing Store",
@@ -141,7 +174,6 @@ export function recordHeartbeat(req: NextRequest, body: any): RealVisitorSession
 
   activeSessions.set(sessionId, updated);
 
-  // If action or page changed, record a real live event
   if (!existing || existing.page !== updated.page || (body.eventDescription && existing.action !== updated.action)) {
     const evtType = body.eventType || "page_view";
     const desc = body.eventDescription || `Navigated to ${updated.pageTitle}`;
@@ -153,6 +185,8 @@ export function recordHeartbeat(req: NextRequest, body: any): RealVisitorSession
       type: evtType,
       description: desc,
       timestamp: now,
+      lat: coords.lat,
+      lng: coords.lng,
     });
     if (realEvents.length > 50) realEvents.pop();
   }

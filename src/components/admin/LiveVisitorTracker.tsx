@@ -8,6 +8,7 @@ import {
   Box, Sparkles, Clock, Globe, AlertCircle, ArrowUpRight
 } from "lucide-react";
 import { useLiveTracker, type VisitorSession } from "@/store/live-tracker";
+import { LiveGlobeMap } from "./LiveGlobeMap";
 import { formatINR } from "@/lib/products";
 
 export function LiveVisitorTracker({ compact = false }: { compact?: boolean }) {
@@ -345,6 +346,9 @@ export function LiveVisitorTracker({ compact = false }: { compact?: boolean }) {
           </div>
         </div>
       </div>
+
+      {/* Shopify Live 3D Globe Map */}
+      <LiveGlobeMap sessions={sessions} />
 
       {/* "What They Are Watching Right Now" Density Cards */}
       <div className="space-y-3">

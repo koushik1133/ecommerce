@@ -10,6 +10,8 @@ export type VisitorSession = {
     country: string;
     flag: string;
     code: string;
+    lat?: number;
+    lng?: number;
   };
   page: string;
   pageTitle: string;
