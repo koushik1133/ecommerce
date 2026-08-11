@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useLiveTracker } from "@/store/live-tracker";
 import { useCart } from "@/store/cart";
 import { Sparkles, Tag, X } from "lucide-react";
+import { useLiveTracker } from "@/store/live-tracker";
 
 function getPageTitle(pathname: string, productParam: string | null): { title: string; garment?: string } {
   if (pathname === "/") return { title: "Home Page" };
@@ -17,7 +17,7 @@ function getPageTitle(pathname: string, productParam: string | null): { title: s
     const slug = pathname.replace("/product/", "");
     const formatted = slug.replace(/-/g, " ");
     const garment = formatted.charAt(0).toUpperCase() + formatted.slice(1);
-    return { title: `${garment} Page`, garment };
+    return { title: `${garment} 360° View`, garment };
   }
   if (pathname === "/checkout") return { title: "Checkout" };
   if (pathname === "/about") return { title: "About Brand" };
@@ -29,8 +29,8 @@ export function LiveTelemetryTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const productParam = searchParams ? searchParams.get("product") : null;
-  const updateRealClient = useLiveTracker((s) => s.updateRealClientSession);
-  const tickSimulation = useLiveTracker((s) => s.tickSimulation);
+  const sessionIdRef = useRef<string | null>(null);
+
   const activePromoAlert = useLiveTracker((s) => s.activePromoAlert);
   const clearPromoAlert = useLiveTracker((s) => s.clearPromoAlert);
 
@@ -38,48 +38,61 @@ export function LiveTelemetryTracker() {
   const cartCount = cartItems.reduce((s, i) => s + i.quantity, 0);
   const cartTotal = cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
 
-  // Sync real client telemetry whenever pathname, params, or cart changes
+  // Initialize or get unique persistent Session ID for this browser tab/window
   useEffect(() => {
-    if (pathname.startsWith("/admin")) return;
+    if (typeof window === "undefined") return;
+    let sid = sessionStorage.getItem("brand_live_session_id");
+    if (!sid) {
+      sid = `vis-${Math.floor(1000 + Math.random() * 9000)}`;
+      sessionStorage.setItem("brand_live_session_id", sid);
+    }
+    sessionIdRef.current = sid;
+  }, []);
+
+  // Function to send real telemetry heartbeat to backend
+  const sendRealHeartbeat = (eventType?: string, eventDescription?: string) => {
+    if (pathname.startsWith("/admin") || !sessionIdRef.current) return;
 
     const { title, garment } = getPageTitle(pathname, productParam);
     const actionDesc =
       pathname.includes("customizer") || pathname.includes("configurator")
         ? `Configuring ${garment || "3D Garment"}`
         : pathname.startsWith("/product/")
-        ? `Viewing 360° ${garment}`
+        ? `Watching 360° ${garment}`
         : pathname === "/checkout"
         ? "In Checkout"
         : `Browsing ${title}`;
 
-    updateRealClient({
-      page: pathname,
-      pageTitle: title,
-      activeGarment: garment,
-      action: actionDesc,
-      cartCount,
-      cartTotal,
-    });
-  }, [pathname, productParam, cartCount, cartTotal, updateRealClient]);
-
-  // Periodic heartbeat + simulation tick
-  useEffect(() => {
-    if (pathname.startsWith("/admin")) return;
-
-    const interval = setInterval(() => {
-      const { title, garment } = getPageTitle(pathname, productParam);
-      updateRealClient({
+    fetch("/api/live-visitors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: sessionIdRef.current,
         page: pathname,
         pageTitle: title,
         activeGarment: garment,
+        action: actionDesc,
         cartCount,
         cartTotal,
-      });
-      tickSimulation();
+        eventType: eventType || "page_view",
+        eventDescription: eventDescription || `Browsing ${title}`,
+      }),
+    }).catch(() => {});
+  };
+
+  // Trigger heartbeat on route change
+  useEffect(() => {
+    sendRealHeartbeat("page_view", `Navigated to ${getPageTitle(pathname, productParam).title}`);
+  }, [pathname, productParam]);
+
+  // Periodic heartbeat every 2.5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      sendRealHeartbeat();
     }, 2500);
 
-    return () => clearInterval(interval);
-  }, [pathname, productParam, cartCount, cartTotal, updateRealClient, tickSimulation]);
+    return () => clearInterval(timer);
+  }, [pathname, productParam, cartCount, cartTotal]);
 
   if (pathname.startsWith("/admin") || !activePromoAlert) return null;
 
