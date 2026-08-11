@@ -8,6 +8,7 @@ import {
 import { StatCard } from "@/components/admin/StatCard";
 import { SalesChart } from "@/components/admin/SalesChart";
 import { StatusBadge } from "@/components/admin/Badges";
+import { LiveVisitorTracker } from "@/components/admin/LiveVisitorTracker";
 import { useAdminOrders } from "@/store/admin";
 import { useAdminProducts } from "@/store/admin";
 import { useAdminCustomers } from "@/store/admin";
@@ -75,6 +76,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Live Visitor Tracking Section */}
+      <LiveVisitorTracker compact={true} />
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard

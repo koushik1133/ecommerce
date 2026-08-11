@@ -1,23 +1,28 @@
 "use client";
 
-import { Menu, Bell, Search } from "lucide-react";
+import Link from "next/link";
+import { Menu, Bell, Search, Globe } from "lucide-react";
 import { useAdminUI } from "@/store/admin";
+import { useLiveTracker } from "@/store/live-tracker";
 import { usePathname } from "next/navigation";
 
 const TITLES: Record<string, string> = {
   "/admin/dashboard": "Dashboard",
+  "/admin/live": "Live Visitors",
   "/admin/products": "Products",
   "/admin/products/new": "New Product",
   "/admin/orders": "Orders",
   "/admin/customers": "Customers",
   "/admin/analytics": "Analytics",
   "/admin/agents": "AI Agents",
+  "/admin/subscribers": "Subscribers",
   "/admin/settings": "Settings",
 };
 
 export function Topbar() {
   const { toggleSidebar } = useAdminUI();
   const pathname = usePathname();
+  const liveVisitors = useLiveTracker((s) => s.sessions.length);
 
   // Find best matching title
   const title =
@@ -49,6 +54,18 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Live Visitor Status Pill */}
+        <Link
+          href="/admin/live"
+          className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[#0f6e56] hover:bg-emerald-500/20 transition text-xs font-semibold"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          <Globe size={14} />
+          <span>{liveVisitors} Live Online</span>
+        </Link>
         {/* Search */}
         <div className="hidden md:flex items-center gap-2 bg-white border border-[#e2e2df] rounded-xl px-3 py-2 w-60">
           <Search size={15} className="text-[#9b9b9b]" />

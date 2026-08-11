@@ -4,12 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Package, ShoppingBag, Users, BarChart3,
-  Bot, Settings, ChevronRight, Zap, X, Mail
+  Bot, Settings, ChevronRight, Zap, X, Mail, Radio
 } from "lucide-react";
 import { useAdminUI } from "@/store/admin";
+import { useLiveTracker } from "@/store/live-tracker";
 
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/live", label: "Live Visitors", icon: Radio, live: true },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag },
   { href: "/admin/customers", label: "Customers", icon: Users },
@@ -25,6 +27,7 @@ const BOTTOM_NAV = [
 export function Sidebar() {
   const pathname = usePathname();
   const { sidebarOpen, closeSidebar } = useAdminUI();
+  const liveCount = useLiveTracker((s) => s.sessions.length);
 
   return (
     <>
@@ -61,7 +64,7 @@ export function Sidebar() {
         {/* Main nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           <p className="text-white/30 text-[10px] font-semibold tracking-[0.12em] uppercase px-2 mb-2">Menu</p>
-          {NAV.map(({ href, label, icon: Icon }) => {
+          {NAV.map(({ href, label, icon: Icon, live }) => {
             const active = pathname === href || (href !== "/admin/dashboard" && pathname.startsWith(href));
             return (
               <Link
@@ -74,8 +77,18 @@ export function Sidebar() {
                 }`}
               >
                 <Icon size={17} className={active ? "text-white" : "text-white/40 group-hover:text-white/70"} />
-                {label}
-                {active && <ChevronRight size={14} className="ml-auto opacity-60" />}
+                <span className="flex-1">{label}</span>
+                {live ? (
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                    </span>
+                    {liveCount}
+                  </span>
+                ) : active ? (
+                  <ChevronRight size={14} className="opacity-60" />
+                ) : null}
               </Link>
             );
           })}

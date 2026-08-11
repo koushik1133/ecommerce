@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
+import { LiveTelemetryTracker } from "@/components/LiveTelemetryTracker";
 import type { ReactNode } from "react";
 
 export function StoreShell({ children }: { children: ReactNode }) {
@@ -16,6 +17,7 @@ export function StoreShell({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <LiveTelemetryTracker />
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />
