@@ -4,9 +4,10 @@ import { Component, type ReactNode } from "react";
 import type { LogoPlacement } from "@/lib/products";
 import { PhotoGallery, type GalleryImage } from "./PhotoGallery";
 import { Tee3DViewer } from "./Tee3DViewer";
+import { ImageSequence360 } from "./ImageSequence360";
 
 type ProductViewerProps = {
-  mode: "photos" | "3d";
+  mode: "photos" | "3d" | "spin";
   color: string;
   logoLabel?: string;
   logoDataUrl?: string;
@@ -14,6 +15,7 @@ type ProductViewerProps = {
   background?: string;
   customBackgroundUrl?: string;
   gallery?: GalleryImage[];
+  spinFrames?: string[];
   className?: string;
 };
 
@@ -42,8 +44,40 @@ export function ProductViewer({
   background,
   customBackgroundUrl,
   gallery = [],
+  spinFrames = [],
   className,
 }: ProductViewerProps) {
+  const fallback = (
+    <div
+      className={`aspect-[4/5] rounded-2xl w-full flex items-center justify-center bg-surface text-sm text-muted px-6 text-center ${className ?? ""}`}
+    >
+      Preview unavailable
+    </div>
+  );
+
+  // ── 360° Image Spin Viewer ──────────────────────────────────────────────────
+  if (mode === "spin" && spinFrames.length >= 2) {
+    return (
+      <ViewerErrorBoundary fallback={fallback}>
+        <div className={`overflow-hidden rounded-2xl ${className ?? ""}`}>
+          <ImageSequence360
+            frames={spinFrames}
+            autoSpin={true}
+            logoLabel={logoLabel}
+            logoDataUrl={logoDataUrl}
+            showLogoOnFront={true}
+            background={
+              background ??
+              "radial-gradient(ellipse at 50% 30%, #fff 0%, #ececea 55%, #e2e2df 100%)"
+            }
+            customBackgroundUrl={customBackgroundUrl}
+          />
+        </div>
+      </ViewerErrorBoundary>
+    );
+  }
+
+  // ── Photo Gallery Viewer ────────────────────────────────────────────────────
   if (mode === "photos") {
     if (gallery.length > 0) {
       return <PhotoGallery images={gallery} className={className} />;
@@ -57,17 +91,9 @@ export function ProductViewer({
     );
   }
 
-  // 360° = interactive 3D object (orbit), not photo frames
+  // ── Default: 3D GLTF Viewer ─────────────────────────────────────────────────
   return (
-    <ViewerErrorBoundary
-      fallback={
-        <div
-          className={`aspect-[4/5] rounded-2xl w-full flex items-center justify-center bg-surface text-sm text-muted px-6 text-center ${className ?? ""}`}
-        >
-          3D preview unavailable
-        </div>
-      }
-    >
+    <ViewerErrorBoundary fallback={fallback}>
       <div className={`overflow-hidden rounded-2xl ${className ?? ""}`}>
         <Tee3DViewer
           color={color}

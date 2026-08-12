@@ -2,12 +2,15 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, X, Save, ArrowLeft, Loader2 } from "lucide-react";
+import { Plus, X, Save, ArrowLeft, Loader2, RotateCcw, Image as ImageIcon, RefreshCw, CheckCircle2 } from "lucide-react";
 import type { Product, ProductColor } from "@/lib/products";
 import { SIZES } from "@/lib/products";
 import { TeeMockup } from "@/components/TeeMockup";
+import { SpinUploader } from "@/components/spin/SpinUploader";
+import { ImageSequence360 } from "@/components/spin/ImageSequence360";
 
-type FormProduct = Omit<Product, "id" | "spinFrames" | "gallery">;
+// Include spinFrames & gallery in the form
+type FormProduct = Omit<Product, "id">;
 
 const BLANK: FormProduct = {
   slug: "",
@@ -25,6 +28,8 @@ const BLANK: FormProduct = {
   category: "essentials",
   viewer: "auto",
   backgroundMode: undefined,
+  spinFrames: [],
+  gallery: [],
 };
 
 type Props = {
@@ -41,6 +46,10 @@ export function ProductForm({ initial = BLANK, onSave, saving = false, title }: 
   const [newColorHex, setNewColorHex] = useState("#ffffff");
   const [newFeature, setNewFeature] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [spinPreviewActive, setSpinPreviewActive] = useState(false);
+  const [spinGenerated, setSpinGenerated] = useState(
+    Boolean(initial?.spinFrames && initial.spinFrames.length > 0)
+  );
 
   const set = useCallback(<K extends keyof FormProduct>(key: K, val: FormProduct[K]) => {
     setForm((f) => ({ ...f, [key]: val }));
@@ -59,7 +68,12 @@ export function ProductForm({ initial = BLANK, onSave, saving = false, title }: 
   const handleSubmit = () => {
     const e = validate();
     if (Object.keys(e).length > 0) { setErrors(e); return; }
-    onSave(form);
+    // Auto-set viewer to "spin" if spin frames are present
+    const saved = { ...form };
+    if (saved.spinFrames && saved.spinFrames.length >= 4) {
+      saved.viewer = "spin";
+    }
+    onSave(saved);
   };
 
   const addColor = () => {
@@ -84,7 +98,21 @@ export function ProductForm({ initial = BLANK, onSave, saving = false, title }: 
     setNewFeature("");
   };
 
+  const handleSpinFramesChange = (frames: string[]) => {
+    set("spinFrames", frames);
+    setSpinGenerated(false);
+    setSpinPreviewActive(false);
+  };
+
+  const handleGenerateSpin = () => {
+    if (!form.spinFrames || form.spinFrames.length < 4) return;
+    setSpinGenerated(true);
+    setSpinPreviewActive(true);
+  };
+
   const previewColor = form.colors[0] ?? { hex: "#1A1A1A", name: "Ink", slug: "ink" };
+  const spinFrames = form.spinFrames ?? [];
+  const spinReady = spinFrames.length >= 4;
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -344,6 +372,76 @@ export function ProductForm({ initial = BLANK, onSave, saving = false, title }: 
               <span className="text-sm text-[#0f0f14]">Mark as "Coming Soon"</span>
             </label>
           </Section>
+
+          {/* ── 360° SPIN PHOTO STUDIO ── */}
+          <div className="bg-white border border-[#e8e8e5] rounded-2xl overflow-hidden">
+            {/* Studio Header */}
+            <div className="p-5 border-b border-[#e8e8e5] flex items-center justify-between">
+              <div>
+                <h3 className="text-[#0f0f14] font-semibold text-sm flex items-center gap-2">
+                  <RotateCcw size={15} className="text-[#0f6e56]" />
+                  360° Spin Photo Studio
+                </h3>
+                <p className="text-[11px] text-[#9b9b9b] mt-0.5">
+                  Upload product photos in rotation order — the viewer auto-builds a smooth 360° spin.
+                </p>
+              </div>
+              {spinGenerated && (
+                <span className="flex items-center gap-1.5 text-[11px] font-bold text-[#0f6e56] bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                  <CheckCircle2 size={12} />
+                  360° Active
+                </span>
+              )}
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Tips banner */}
+              <div className="flex items-start gap-3 p-3 bg-[#fafaf9] border border-[#e8e8e5] rounded-xl text-[11px] text-[#6b6b6b] leading-relaxed">
+                <ImageIcon size={14} className="text-[#9b9b9b] mt-0.5 shrink-0" />
+                <p>
+                  <strong className="text-[#0f0f14]">Shooting tips:</strong> Place garment on a mannequin or hanger on a clean, uniform background.
+                  Rotate 10–15° between each shot. Name files <code className="bg-[#f0f0ee] px-1 rounded text-[10px]">01.jpg, 02.jpg…</code> and upload in order.
+                  <strong className="text-[#0f0f14]"> 8 frames minimum, 24 recommended.</strong>
+                </p>
+              </div>
+
+              {/* Uploader component */}
+              <SpinUploader
+                frames={spinFrames}
+                onChange={handleSpinFramesChange}
+              />
+
+              {/* Generate button */}
+              {spinFrames.length >= 4 && (
+                <button
+                  type="button"
+                  onClick={handleGenerateSpin}
+                  className="w-full flex items-center justify-center gap-2 bg-[#0f0f14] hover:bg-[#2a2a2a] text-white px-4 py-3 rounded-xl text-sm font-semibold transition"
+                >
+                  <RefreshCw size={15} className={spinPreviewActive ? "animate-spin" : ""} />
+                  {spinGenerated ? "Refresh 360° Preview" : "Generate 360° View"}
+                </button>
+              )}
+
+              {/* Live 360° preview panel */}
+              {spinPreviewActive && spinFrames.length >= 4 && (
+                <div className="rounded-2xl overflow-hidden border border-[#e8e8e5] shadow-sm">
+                  <div className="px-4 py-2.5 bg-[#0f0f14] text-white text-[11px] font-bold uppercase tracking-widest flex items-center gap-2">
+                    <RotateCcw size={11} />
+                    Live 360° Preview — drag to spin
+                  </div>
+                  <ImageSequence360
+                    frames={spinFrames}
+                    autoSpin={true}
+                    background="radial-gradient(ellipse at 50% 30%, #f5f5f4 0%, #ebebea 80%)"
+                  />
+                  <div className="px-4 py-2.5 bg-[#fafaf9] border-t border-[#e8e8e5] text-[11px] text-[#9b9b9b]">
+                    {spinFrames.length} frames uploaded · Saving will automatically set viewer to "360° Spin"
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Right: Preview */}
@@ -378,6 +476,22 @@ export function ProductForm({ initial = BLANK, onSave, saving = false, title }: 
                   />
                 ))}
               </div>
+
+              {/* 360° status badge */}
+              {spinFrames.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-[#e8e8e5]">
+                  <div className={`flex items-center gap-2 text-xs font-semibold rounded-lg px-3 py-2 ${
+                    spinGenerated
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                  }`}>
+                    <RotateCcw size={12} />
+                    {spinGenerated
+                      ? `360° viewer ready (${spinFrames.length} frames)`
+                      : `${spinFrames.length} frames — click "Generate" to preview`}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

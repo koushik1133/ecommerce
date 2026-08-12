@@ -17,6 +17,7 @@ import {
 } from "@/lib/studio";
 import { PhotoGallery } from "@/components/spin/PhotoGallery";
 import { Tee3DViewer } from "@/components/spin/Tee3DViewer";
+import { ImageSequence360 } from "@/components/spin/ImageSequence360";
 import {
   readFileAsDataUrl,
   uploadErrorMessage,
@@ -33,7 +34,10 @@ export function ProductConfigurator({ product }: { product: Product }) {
   const [customLogo, setCustomLogo] = useState<string | undefined>();
   const [background, setBackground] = useState<StudioBackground>(STUDIO_BACKGROUNDS[0]);
   const [customBg, setCustomBg] = useState<string | undefined>();
-  const [viewMode, setViewMode] = useState<"photos" | "3d">("3d");
+  const hasSpin = Boolean(product.spinFrames && product.spinFrames.length >= 2);
+  const [viewMode, setViewMode] = useState<"photos" | "3d" | "spin">(
+    hasSpin ? "spin" : "3d"
+  );
   const [added, setAdded] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -111,6 +115,30 @@ export function ProductConfigurator({ product }: { product: Product }) {
       {/* Media column — Shopify-style */}
       <div className="relative lg:sticky lg:top-28 lg:self-start space-y-3">
         <div className="flex flex-wrap items-center gap-2">
+          {hasSpin && (
+            <button
+              type="button"
+              onClick={() => setViewMode("spin")}
+              className={`px-3.5 py-1.5 text-xs tracking-wide border rounded-full transition-colors ${
+                viewMode === "spin"
+                  ? "bg-ink text-chalk border-ink"
+                  : "border-line text-muted hover:border-ink"
+              }`}
+            >
+              360° Spin
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setViewMode("3d")}
+            className={`px-3.5 py-1.5 text-xs tracking-wide border rounded-full transition-colors ${
+              viewMode === "3d"
+                ? "bg-ink text-chalk border-ink"
+                : "border-line text-muted hover:border-ink"
+            }`}
+          >
+            3D Model
+          </button>
           <button
             type="button"
             onClick={() => setViewMode("photos")}
@@ -123,17 +151,6 @@ export function ProductConfigurator({ product }: { product: Product }) {
           >
             Photos{gallery.length ? ` (${gallery.length})` : ""}
           </button>
-          <button
-            type="button"
-            onClick={() => setViewMode("3d")}
-            className={`px-3.5 py-1.5 text-xs tracking-wide border rounded-full transition-colors ${
-              viewMode === "3d"
-                ? "bg-ink text-chalk border-ink"
-                : "border-line text-muted hover:border-ink"
-            }`}
-          >
-            360°
-          </button>
           <Link
             href={`/configurator?product=${product.slug}`}
             className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-ink/15 bg-accent-soft px-3.5 py-1.5 text-xs font-medium text-accent hover:bg-accent hover:text-white transition-colors"
@@ -143,7 +160,23 @@ export function ProductConfigurator({ product }: { product: Product }) {
           </Link>
         </div>
 
-        {viewMode === "photos" && gallery.length > 0 ? (
+        {/* 360° Image Spin viewer */}
+        {viewMode === "spin" && hasSpin && (
+          <div className="overflow-hidden rounded-2xl border border-line">
+            <ImageSequence360
+              frames={product.spinFrames!}
+              autoSpin={true}
+              logoLabel={logoLabel}
+              logoDataUrl={customLogo}
+              showLogoOnFront={true}
+              background={background.value}
+              customBackgroundUrl={customBg}
+            />
+          </div>
+        )}
+
+        {/* Photo gallery */}
+        {viewMode === "photos" && gallery.length > 0 && (
           <PhotoGallery
             images={gallery}
             color={color.hex}
@@ -151,7 +184,10 @@ export function ProductConfigurator({ product }: { product: Product }) {
             logoDataUrl={customLogo}
             placement={placement}
           />
-        ) : (
+        )}
+
+        {/* 3D GLTF Model */}
+        {(viewMode === "3d" || (viewMode === "photos" && gallery.length === 0)) && (
           <div className="overflow-hidden rounded-2xl border border-line bg-surface">
             <Tee3DViewer
               modelSlug={product.modelSlug || getModelSlugForProduct(product)}

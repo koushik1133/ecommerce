@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
 import {
-  ArrowLeft,
   Check,
   ChevronDown,
   Expand,
@@ -705,12 +703,6 @@ export function StudioConfigurator({
       style={{ background: currentBgColor }}
     >
       <div className="relative w-full h-full transition-all duration-500 ease-out">
-        <Link
-          href="/"
-          className="absolute top-3 left-3 z-10 px-3.5 py-1.5 rounded-full bg-white/90 border border-black/10 shadow-sm text-xs font-semibold text-[#111] hover:bg-white hover:scale-105 transition-all inline-flex items-center gap-1.5"
-        >
-          <ArrowLeft size={14} /> Back to Home
-        </Link>
         <button
           type="button"
           onClick={() => void toggleFullscreen()}

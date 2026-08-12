@@ -115,10 +115,11 @@ export function Sidebar() {
           })}
           <Link
             href="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-all border border-white/10 mt-2 bg-white/5"
+            target="_blank"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/40 hover:text-white hover:bg-white/[0.06] transition-all"
           >
-            <span className="text-sm">←</span>
-            Back to Home Store
+            <span className="w-4 h-4 text-center text-xs">↗</span>
+            View Store
           </Link>
         </div>
       </aside>

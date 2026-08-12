@@ -10,9 +10,9 @@ export default function NotFound() {
       <p className="mt-3 text-muted">This page hasn&apos;t launched yet.</p>
       <Link
         href="/"
-        className="mt-8 inline-flex bg-ink text-chalk px-6 py-3.5 text-sm font-medium hover:bg-accent transition-colors rounded-full"
+        className="mt-8 inline-flex bg-ink text-chalk px-6 py-3.5 text-sm font-medium hover:bg-accent transition-colors"
       >
-        ← Back to Home Page
+        Back home
       </Link>
     </div>
   );

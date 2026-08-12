@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Bell, Search, Globe, ArrowLeft } from "lucide-react";
+import { Menu, Bell, Search, Globe } from "lucide-react";
 import { useAdminUI } from "@/store/admin";
 import { useLiveTracker } from "@/store/live-tracker";
 import { usePathname } from "next/navigation";
@@ -54,15 +54,6 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Back to Home Button */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#e2e2df] text-[#0f0f14] hover:bg-[#f0f0ee] transition text-xs font-semibold shadow-sm"
-        >
-          <ArrowLeft size={14} />
-          <span>Back to Home</span>
-        </Link>
-
         {/* Live Visitor Status Pill */}
         <Link
           href="/admin/live"
