@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bot, Send, X, Sparkles, ShoppingBag, ArrowRight,
-  Key, RefreshCw, CheckCircle2, ChevronDown, MessageSquare
+  Key, RefreshCw, CheckCircle2, Lightbulb, Zap, Navigation
 } from "lucide-react";
 import { useCart } from "@/store/cart";
 import { products } from "@/lib/products";
@@ -24,6 +24,7 @@ export function FloatingAIAgent() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeActionToast, setActiveActionToast] = useState<string | null>(null);
   const [groqKey, setGroqKey] = useState("");
   const [showKeyInput, setShowKeyInput] = useState(false);
 
@@ -33,17 +34,17 @@ export function FloatingAIAgent() {
     {
       id: "welcome-1",
       sender: "agent",
-      text: "Hello! I am your Brand AI Concierge. Ask me anything about our 3D apparel, or tell me to navigate, configure garments, or add items directly to your cart!",
+      text: "Hello! I am your Brand AI Concierge, your personal guide for streetwear styling, size advice, and 3D customization.\nI can seamlessly navigate the site for you, configure 3D garments, or add customized items directly to your shopping bag.\nHow can I help elevate your wardrobe today?",
       suggestions: [
-        "Take me to Privacy Policy",
         "Add a Hoodie size M color Ink to cart",
-        "Open 3D Configurator Studio",
+        "Open 3D Garment Studio",
+        "Show Heavyweight Joggers",
+        "Take me to Checkout",
       ],
       timestamp: Date.now(),
     },
   ]);
 
-  // Load stored Groq API Key from localStorage if user added one
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedKey = localStorage.getItem("brand_groq_api_key");
@@ -67,14 +68,19 @@ export function FloatingAIAgent() {
     if (isOpen) scrollToBottom();
   }, [messages, isOpen, loading]);
 
-  // Client Tool Execution Engine
+  // Smooth Client Tool Execution Engine
   const executeToolCall = (toolCall: any) => {
     if (!toolCall) return;
 
     try {
       if (toolCall.type === "navigate" && toolCall.path) {
-        router.push(toolCall.path);
+        setActiveActionToast(`🧭 Navigating to ${toolCall.path}...`);
+        setTimeout(() => {
+          router.push(toolCall.path);
+          setActiveActionToast(null);
+        }, 500);
       } else if (toolCall.type === "add_to_cart") {
+        setActiveActionToast(`🛒 Adding ${toolCall.productName || "item"} to cart...`);
         const prod =
           products.find((p) => p.id === toolCall.productId || p.slug === toolCall.productId) ||
           products.find((p) => p.name.toLowerCase().includes(toolCall.productName?.toLowerCase() || "")) ||
@@ -93,19 +99,27 @@ export function FloatingAIAgent() {
           colorHex: colorObj.hex,
           size: toolCall.size || prod.sizes[0] || "M",
           quantity: toolCall.quantity || 1,
+          logoPlacement: toolCall.logoPlacement || undefined,
+          logoLabel: toolCall.logoLabel || undefined,
         });
 
         // Automatically open cart drawer to show customer!
         setTimeout(() => {
           cart.openCart();
-        }, 400);
+          setActiveActionToast(null);
+        }, 600);
       } else if (toolCall.type === "configure_3d") {
-        router.push(`/customizer?model=${toolCall.modelSlug || "cap"}`);
+        setActiveActionToast(`🎨 Opening 3D Studio for ${toolCall.modelSlug}...`);
+        setTimeout(() => {
+          router.push(`/customizer?model=${toolCall.modelSlug || "cap"}`);
+          setActiveActionToast(null);
+        }, 500);
       } else if (toolCall.type === "open_cart") {
         cart.openCart();
       }
     } catch (e) {
       console.error("Failed to execute tool call:", e);
+      setActiveActionToast(null);
     }
   };
 
@@ -151,13 +165,17 @@ export function FloatingAIAgent() {
         sender: "agent",
         text: data.reply || "I have processed your request.",
         toolCall: data.toolCall || null,
-        suggestions: data.suggestions || ["View Shop Collection", "Open 3D Studio"],
+        suggestions: data.suggestions || [
+          "Explore 3D Customizer Studio",
+          "Add Warmup Hoodie M / Ink",
+          "Filter Hoodies & Sweatshirts",
+        ],
         timestamp: Date.now(),
       };
 
       setMessages((prev) => [...prev, agentMsg]);
 
-      // Execute tool action directly on web app
+      // Execute tool action smoothly on web app
       if (data.toolCall) {
         executeToolCall(data.toolCall);
       }
@@ -205,7 +223,7 @@ export function FloatingAIAgent() {
 
       {/* Expandable Glassmorphism Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[92vw] sm:w-[420px] h-[580px] max-h-[85vh] bg-[#0f0f14]/95 text-white rounded-3xl shadow-2xl border border-white/15 backdrop-blur-xl flex flex-col overflow-hidden animate-scale-up">
+        <div className="fixed bottom-6 right-6 z-50 w-[92vw] sm:w-[440px] h-[600px] max-h-[85vh] bg-[#0f0f14]/95 text-white rounded-3xl shadow-2xl border border-white/15 backdrop-blur-xl flex flex-col overflow-hidden animate-scale-up">
           {/* Header */}
           <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/5">
             <div className="flex items-center gap-3">
@@ -265,15 +283,43 @@ export function FloatingAIAgent() {
             </form>
           )}
 
+          {/* Smooth Action Toast Notification */}
+          {activeActionToast && (
+            <div className="bg-emerald-500/20 text-emerald-300 border-b border-emerald-500/30 px-4 py-2 text-xs font-semibold flex items-center gap-2 animate-pulse">
+              <Zap size={14} className="shrink-0" />
+              <span>{activeActionToast}</span>
+            </div>
+          )}
+
           {/* Message History Thread */}
           <div className="flex-1 p-4 overflow-y-auto space-y-4">
+            {/* HERO TIP BANNER */}
+            <div
+              onClick={() => handleSend("Add to cart a hoodie of size M and color Ink with the white logo in center")}
+              className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/60 to-indigo-950/60 border border-emerald-500/30 hover:border-emerald-500/60 transition cursor-pointer group shadow-inner"
+            >
+              <div className="flex items-start gap-2.5">
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <Lightbulb size={14} />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                    Pro AI Command Tip
+                  </span>
+                  <p className="text-xs font-medium text-white/90 mt-0.5 leading-snug group-hover:text-emerald-300 transition">
+                    Try asking: <span className="font-semibold underline text-white">"Add to cart a hoodie of size M and color Ink with the white logo in center"</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {messages.map((m) => (
               <div
                 key={m.id}
                 className={`flex flex-col ${m.sender === "user" ? "items-end" : "items-start"}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed ${
+                  className={`max-w-[90%] rounded-2xl p-4 text-xs leading-relaxed whitespace-pre-line ${
                     m.sender === "user"
                       ? "bg-[#0f6e56] text-white rounded-br-none shadow-md"
                       : "bg-white/10 text-white/95 border border-white/10 rounded-bl-none"
@@ -283,8 +329,8 @@ export function FloatingAIAgent() {
 
                   {/* Executed Tool Call Badge */}
                   {m.toolCall && (
-                    <div className="mt-2.5 pt-2 border-t border-white/15 text-[11px] text-emerald-400 flex items-center gap-1.5 font-mono">
-                      <CheckCircle2 size={13} className="shrink-0" />
+                    <div className="mt-3 pt-2.5 border-t border-white/15 text-[11px] text-emerald-400 flex items-center gap-1.5 font-mono">
+                      <CheckCircle2 size={13} className="shrink-0 text-emerald-400" />
                       <span>
                         {m.toolCall.type === "navigate"
                           ? `Navigating to ${m.toolCall.path}`
@@ -292,19 +338,19 @@ export function FloatingAIAgent() {
                           ? `Added ${m.toolCall.productName} (${m.toolCall.size} / ${m.toolCall.color}) to cart`
                           : m.toolCall.type === "configure_3d"
                           ? `Switched 3D model to ${m.toolCall.modelSlug}`
-                          : "Executed action"}
+                          : "Executed tool action"}
                       </span>
                     </div>
                   )}
 
                   {/* Options Buttons for Clarification */}
                   {m.toolCall?.type === "ask_for_details" && m.toolCall.options && (
-                    <div className="mt-3 flex flex-wrap gap-1.5 pt-2 border-t border-white/15">
+                    <div className="mt-3 flex flex-wrap gap-1.5 pt-2.5 border-t border-white/15">
                       {m.toolCall.options.map((opt: string) => (
                         <button
                           key={opt}
                           onClick={() => handleSend(`${m.toolCall.missingField === "size" ? "Size " : ""}${opt}`)}
-                          className="px-3 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs transition"
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/40 text-emerald-300 font-bold text-xs transition"
                         >
                           {opt}
                         </button>
@@ -313,17 +359,17 @@ export function FloatingAIAgent() {
                   )}
                 </div>
 
-                {/* Follow-up Suggestion Chips */}
+                {/* Highly Relevant Follow-up Suggestion Chips */}
                 {m.suggestions && m.suggestions.length > 0 && m.sender === "agent" && (
-                  <div className="mt-2 flex flex-wrap gap-1.5 pl-1">
+                  <div className="mt-2.5 flex flex-wrap gap-1.5 pl-1">
                     {m.suggestions.map((sug, i) => (
                       <button
                         key={i}
                         onClick={() => handleSend(sug)}
-                        className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-[11px] text-white/70 hover:text-white transition flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-[11px] text-white/80 hover:text-white transition flex items-center gap-1.5 shadow-sm"
                       >
                         <span>{sug}</span>
-                        <ArrowRight size={10} className="opacity-50" />
+                        <ArrowRight size={10} className="opacity-50 text-emerald-400" />
                       </button>
                     ))}
                   </div>
@@ -333,9 +379,9 @@ export function FloatingAIAgent() {
 
             {/* Thinking Indicator */}
             {loading && (
-              <div className="flex items-center gap-2 text-xs text-white/50 bg-white/5 p-3 rounded-2xl w-fit">
+              <div className="flex items-center gap-2 text-xs text-white/60 bg-white/5 p-3 rounded-2xl w-fit border border-white/10">
                 <RefreshCw size={13} className="animate-spin text-emerald-400" />
-                <span>AI Concierge is processing tool actions…</span>
+                <span>AI Concierge is evaluating tool actions…</span>
               </div>
             )}
 
@@ -349,19 +395,19 @@ export function FloatingAIAgent() {
                 e.preventDefault();
                 handleSend();
               }}
-              className="flex items-center gap-2 bg-white/10 border border-white/10 rounded-2xl px-3 py-2"
+              className="flex items-center gap-2 bg-white/10 border border-white/10 rounded-2xl px-3.5 py-2.5 focus-within:border-emerald-500/60 transition"
             >
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask or command (e.g. 'Add hoodie size M', 'Take me to privacy')..."
+                placeholder="Ask or command (e.g. 'Add hoodie size M color Ink')..."
                 className="flex-1 bg-transparent text-xs text-white placeholder:text-white/40 focus:outline-none"
               />
               <button
                 type="submit"
                 disabled={!input.trim() || loading}
-                className="w-7 h-7 rounded-xl bg-[#0f6e56] hover:bg-[#0c5945] disabled:opacity-40 text-white flex items-center justify-center transition shrink-0"
+                className="w-7 h-7 rounded-xl bg-[#0f6e56] hover:bg-[#0c5945] disabled:opacity-40 text-white flex items-center justify-center transition shrink-0 shadow-md"
               >
                 <Send size={13} />
               </button>
