@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
 import { LiveTelemetryTracker } from "@/components/LiveTelemetryTracker";
+import { FloatingAIAgent } from "@/components/FloatingAIAgent";
 
 export function StoreShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -19,6 +20,7 @@ export function StoreShell({ children }: { children: ReactNode }) {
     <>
       <Suspense fallback={null}>
         <LiveTelemetryTracker />
+        <FloatingAIAgent />
       </Suspense>
       <Header />
       <main className="flex-1">{children}</main>
