@@ -7,6 +7,7 @@ import { Menu, Search, ShoppingBag, X } from "lucide-react";
 import { useCart } from "@/store/cart";
 
 const NAV = [
+  { href: "/", label: "Home" },
   { href: "/shop", label: "Shop" },
   { href: "/configurator", label: "Configurator" },
   { href: "/about", label: "About" },
