@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { checkRateLimit, sanitizeInput } from "@/lib/security";
 
 const DATA_FILE = path.join(process.cwd(), "data", "subscribers.json");
 
@@ -20,45 +21,71 @@ function writeSubscribers(list: Subscriber[]) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(list, null, 2), "utf-8");
 }
 
-// POST /api/subscribe — add a new subscriber
+// POST /api/subscribe — add a new subscriber with rate limiting & sanitization
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({})) as { email?: string };
-  const email = (body.email ?? "").toLowerCase().trim();
-
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
+  const rateLimit = checkRateLimit(req, 10, 60000); // 10 subscriptions/min limit per IP
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many subscription attempts. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.reset) } }
+    );
   }
 
-  const list = readSubscribers();
-  if (list.some((s) => s.email === email)) {
-    return NextResponse.json({ error: "Already subscribed." }, { status: 409 });
+  try {
+    const body = (await req.json().catch(() => ({}))) as { email?: string };
+    const rawEmail = (body.email ?? "").toLowerCase().trim();
+    const email = sanitizeInput(rawEmail);
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
+    }
+
+    const list = readSubscribers();
+    if (list.some((s) => s.email === email)) {
+      return NextResponse.json({ error: "Already subscribed." }, { status: 409 });
+    }
+
+    list.push({ email, subscribedAt: new Date().toISOString() });
+    writeSubscribers(list);
+
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Failed to process subscription request." }, { status: 400 });
   }
-
-  list.push({ email, subscribedAt: new Date().toISOString() });
-  writeSubscribers(list);
-
-  return NextResponse.json({ ok: true });
 }
 
-// GET /api/subscribe — return all subscribers (admin use)
-export async function GET() {
+// GET /api/subscribe — return all subscribers
+export async function GET(req: NextRequest) {
+  const rateLimit = checkRateLimit(req, 30, 60000);
+  if (!rateLimit.success) {
+    return NextResponse.json({ error: "Rate limit exceeded." }, { status: 429 });
+  }
+
   const list = readSubscribers();
   return NextResponse.json({ subscribers: list });
 }
 
-// DELETE /api/subscribe — remove subscriber by email (body: { email })
+// DELETE /api/subscribe — remove subscriber by email
 export async function DELETE(req: NextRequest) {
-  const body = await req.json().catch(() => ({})) as { email?: string };
-  const email = (body.email ?? "").toLowerCase().trim();
-  if (!email) {
-    return NextResponse.json({ error: "Email required." }, { status: 400 });
+  const rateLimit = checkRateLimit(req, 20, 60000);
+  if (!rateLimit.success) {
+    return NextResponse.json({ error: "Rate limit exceeded." }, { status: 429 });
   }
-  let list = readSubscribers();
-  const before = list.length;
-  list = list.filter((s) => s.email !== email);
-  if (list.length === before) {
-    return NextResponse.json({ error: "Not found." }, { status: 404 });
+
+  try {
+    const body = (await req.json().catch(() => ({}))) as { email?: string };
+    const email = sanitizeInput((body.email ?? "").toLowerCase().trim());
+
+    if (!email) {
+      return NextResponse.json({ error: "Email parameter required." }, { status: 400 });
+    }
+
+    let list = readSubscribers();
+    list = list.filter((s) => s.email !== email);
+    writeSubscribers(list);
+
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Failed to delete subscriber." }, { status: 400 });
   }
-  writeSubscribers(list);
-  return NextResponse.json({ ok: true });
 }
